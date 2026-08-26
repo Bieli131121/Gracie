@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #FFFFFF;
+  color: #1C1C1E;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #E22726;
+  color: white;
+}
+
+:focus-visible {
+  outline: 2px solid #A32020;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
