@@ -662,7 +662,14 @@ interface DemoStoreValue {
   presentesHoje: Set<string>
   usuarios: Usuario[]
   permissoes: MatrizPermissoes
-  adicionarAluno: (dados: { nome: string; telefone: string; email: string; faixa: FaixaCor; cpf: string }) => void
+  adicionarAluno: (dados: {
+    nome: string
+    telefone: string
+    email: string
+    faixa: FaixaCor
+    cpf: string
+    senhaAcesso?: string
+  }) => void
   // ---------- Portal do aluno ----------
   buscarAlunoPorCpf: (cpf: string) => Aluno | undefined
   cadastrarSenhaAluno: (cpf: string, senha: string) => { ok: boolean; erro?: string }
@@ -672,6 +679,7 @@ interface DemoStoreValue {
     alunoId: string,
     dados: {
       nome: string
+      cpf: string
       telefone: string
       email: string
       data_nascimento: string
@@ -948,8 +956,15 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     alunoNome: alunos.find((a) => a.id === m.aluno_id)?.nome ?? '—',
   }))
 
-  function adicionarAluno(dados: { nome: string; telefone: string; email: string; faixa: FaixaCor; cpf: string }) {
-    const novo = alunoDemo(dados.nome, dados.faixa, 0, dados.telefone, 0)
+  function adicionarAluno(dados: {
+    nome: string
+    telefone: string
+    email: string
+    faixa: FaixaCor
+    cpf: string
+    senhaAcesso?: string
+  }) {
+    const novo = alunoDemo(dados.nome, dados.faixa, 0, dados.telefone, 0, dados.senhaAcesso || null)
     novo.email = dados.email || null
     novo.cpf = dados.cpf.trim()
     setAlunos((prev) => [...prev, novo])
@@ -985,6 +1000,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     alunoId: string,
     dados: {
       nome: string
+      cpf: string
       telefone: string
       email: string
       data_nascimento: string
@@ -999,6 +1015,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
           ? {
               ...a,
               nome: dados.nome,
+              cpf: dados.cpf,
               telefone: dados.telefone || null,
               email: dados.email || null,
               data_nascimento: dados.data_nascimento || null,

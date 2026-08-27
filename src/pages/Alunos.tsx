@@ -105,22 +105,27 @@ function NovoAlunoModal({
   onSalvar,
 }: {
   onClose: () => void
-  onSalvar: (dados: { nome: string; telefone: string; email: string; faixa: FaixaCor; cpf: string }) => void
+  onSalvar: (dados: { nome: string; telefone: string; email: string; faixa: FaixaCor; cpf: string; senhaAcesso?: string }) => void
 }) {
   const [nome, setNome] = useState('')
   const [cpf, setCpf] = useState('')
   const [telefone, setTelefone] = useState('')
   const [email, setEmail] = useState('')
   const [faixa, setFaixa] = useState<FaixaCor>('branca')
+  const [definirSenha, setDefinirSenha] = useState(false)
+  const [senha, setSenha] = useState('')
+  const [confirmarSenha, setConfirmarSenha] = useState('')
+
+  const senhaValida = !definirSenha || (senha.length >= 6 && senha === confirmarSenha)
 
   function salvar() {
-    if (!nome.trim() || !cpfValido(cpf)) return
-    onSalvar({ nome, telefone, email, faixa, cpf })
+    if (!nome.trim() || !cpfValido(cpf) || !senhaValida) return
+    onSalvar({ nome, telefone, email, faixa, cpf, senhaAcesso: definirSenha ? senha : undefined })
   }
 
   return (
-    <div className="fixed inset-0 bg-mat-900/60 flex items-center justify-center px-4 z-50">
-      <div className="bg-white rounded-sm p-6 w-full max-w-md">
+    <div className="fixed inset-0 bg-mat-900/60 flex items-center justify-center px-4 z-50 py-8">
+      <div className="bg-white rounded-sm p-6 w-full max-w-md max-h-full overflow-y-auto">
         <h2 className="font-display text-lg text-mat-900 mb-5">Novo aluno</h2>
 
         <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Nome</label>
@@ -138,6 +143,58 @@ function NovoAlunoModal({
           className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-1 text-sm focus:border-brand-red outline-none"
         />
         <p className="text-xs text-mat-700/40 mb-4">Usado pelo aluno para entrar no portal (portal-aluno)</p>
+
+        <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={definirSenha}
+            onChange={(e) => {
+              setDefinirSenha(e.target.checked)
+              if (!e.target.checked) {
+                setSenha('')
+                setConfirmarSenha('')
+              }
+            }}
+            className="rounded-sm border-mat-700/30"
+          />
+          <span className="text-sm text-mat-700">Já cadastrar uma senha de acesso ao portal</span>
+        </label>
+
+        {definirSenha && (
+          <div className="bg-gi-50 rounded-sm p-4 mb-4 space-y-3">
+            <div>
+              <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Senha</label>
+              <input
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="mínimo 6 caracteres"
+                className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">
+                Confirmar senha
+              </label>
+              <input
+                type="password"
+                value={confirmarSenha}
+                onChange={(e) => setConfirmarSenha(e.target.value)}
+                placeholder="repita a senha"
+                className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none bg-white"
+              />
+            </div>
+            {senha.length > 0 && senha.length < 6 && (
+              <p className="text-xs text-brand-red">A senha precisa ter pelo menos 6 caracteres.</p>
+            )}
+            {confirmarSenha.length > 0 && senha !== confirmarSenha && (
+              <p className="text-xs text-brand-red">As senhas não coincidem.</p>
+            )}
+            <p className="text-xs text-mat-700/50">
+              Se preferir, deixe desmarcado — o aluno cadastra a própria senha no primeiro acesso ao portal.
+            </p>
+          </div>
+        )}
 
         <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Telefone</label>
         <input
@@ -175,7 +232,7 @@ function NovoAlunoModal({
           </button>
           <button
             onClick={salvar}
-            disabled={!nome.trim() || !cpfValido(cpf)}
+            disabled={!nome.trim() || !cpfValido(cpf) || !senhaValida}
             className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded-sm transition-colors disabled:opacity-50"
           >
             Salvar

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Aluno, FaixaCor } from '../types'
 import { useDemoStore } from '../lib/demoStore'
+import { formatarCpf, cpfValido } from '../lib/cpf'
 import { Faixa } from '../components/Faixa'
 
 interface Props {
@@ -220,6 +221,7 @@ function EditarAlunoForm({
 }) {
   const { atualizarAluno } = useDemoStore()
   const [nome, setNome] = useState(aluno.nome)
+  const [cpf, setCpf] = useState(aluno.cpf)
   const [telefone, setTelefone] = useState(aluno.telefone ?? '')
   const [email, setEmail] = useState(aluno.email ?? '')
   const [dataNascimento, setDataNascimento] = useState(aluno.data_nascimento ?? '')
@@ -228,9 +230,10 @@ function EditarAlunoForm({
   const [observacoes, setObservacoes] = useState(aluno.observacoes ?? '')
 
   function salvar() {
-    if (!nome.trim()) return
+    if (!nome.trim() || !cpfValido(cpf)) return
     atualizarAluno(aluno.id, {
       nome,
+      cpf,
       telefone,
       email,
       data_nascimento: dataNascimento,
@@ -256,6 +259,17 @@ function EditarAlunoForm({
               onChange={(e) => setNome(e.target.value)}
               className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">CPF</label>
+            <input
+              value={cpf}
+              onChange={(e) => setCpf(formatarCpf(e.target.value))}
+              placeholder="000.000.000-00"
+              className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none"
+            />
+            <p className="text-xs text-mat-700/40 mt-1">Usado pelo aluno para entrar no portal</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -338,7 +352,7 @@ function EditarAlunoForm({
             </button>
             <button
               onClick={salvar}
-              disabled={!nome.trim()}
+              disabled={!nome.trim() || !cpfValido(cpf)}
               className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded-sm transition-colors disabled:opacity-50"
             >
               Salvar alterações
