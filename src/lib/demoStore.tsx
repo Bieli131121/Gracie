@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from 'react'
+import { normalizarCpf } from './cpf'
 import {
   Aluno,
   Mensalidade,
@@ -77,13 +78,30 @@ const PERMISSOES_INICIAIS: MatrizPermissoes = {
 }
 
 // ---------- Alunos ----------
-function alunoDemo(nome: string, faixa: FaixaCor, grau: number, telefone: string, diasMatricula: number): Aluno {
+let contadorCpfDemo = 0
+/** Gera um CPF fictício só para preencher os dados de demonstração (não é um CPF válido de verdade). */
+function cpfDemo(): string {
+  contadorCpfDemo += 1
+  const n = String(100000000 + contadorCpfDemo).padStart(9, '0')
+  return `${n.slice(0, 3)}.${n.slice(3, 6)}.${n.slice(6, 9)}-00`
+}
+
+function alunoDemo(
+  nome: string,
+  faixa: FaixaCor,
+  grau: number,
+  telefone: string,
+  diasMatricula: number,
+  senhaAcesso: string | null = null
+): Aluno {
   const d = new Date()
   d.setDate(d.getDate() - diasMatricula)
   return {
     id: uid(),
     perfil_id: null,
     nome,
+    cpf: cpfDemo(),
+    senha_acesso: senhaAcesso,
     email: null,
     telefone,
     data_nascimento: null,
@@ -97,7 +115,8 @@ function alunoDemo(nome: string, faixa: FaixaCor, grau: number, telefone: string
 }
 
 const ALUNOS_INICIAIS: Aluno[] = [
-  alunoDemo('Rafael Souza', 'roxa', 2, '(48) 99911-2233', 900),
+  // Este já tem senha cadastrada — serve pra testar o login direto no portal do aluno.
+  alunoDemo('Rafael Souza', 'roxa', 2, '(48) 99911-2233', 900, 'rafael123'),
   alunoDemo('Camila Ferreira', 'azul', 3, '(48) 99822-4455', 620),
   alunoDemo('Bruno Alves', 'branca', 1, '(48) 99733-5566', 90),
   alunoDemo('Larissa Dias', 'marrom', 1, '(48) 99644-6677', 1500),
@@ -643,7 +662,12 @@ interface DemoStoreValue {
   presentesHoje: Set<string>
   usuarios: Usuario[]
   permissoes: MatrizPermissoes
-  adicionarAluno: (dados: { nome: string; telefone: string; email: string; faixa: FaixaCor }) => void
+  adicionarAluno: (dados: { nome: string; telefone: string; email: string; faixa: FaixaCor; cpf: string }) => void
+  // ---------- Portal do aluno ----------
+  buscarAlunoPorCpf: (cpf: string) => Aluno | undefined
+  cadastrarSenhaAluno: (cpf: string, senha: string) => { ok: boolean; erro?: string }
+  resetarSenhaAluno: (alunoId: string) => void
+  autenticarAluno: (cpf: string, senha: string) => Aluno | null
   atualizarAluno: (
     alunoId: string,
     dados: {
@@ -924,10 +948,37 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     alunoNome: alunos.find((a) => a.id === m.aluno_id)?.nome ?? '—',
   }))
 
-  function adicionarAluno(dados: { nome: string; telefone: string; email: string; faixa: FaixaCor }) {
+  function adicionarAluno(dados: { nome: string; telefone: string; email: string; faixa: FaixaCor; cpf: string }) {
     const novo = alunoDemo(dados.nome, dados.faixa, 0, dados.telefone, 0)
     novo.email = dados.email || null
+    novo.cpf = dados.cpf.trim()
     setAlunos((prev) => [...prev, novo])
+  }
+
+  // ---------- Portal do aluno (login por CPF) ----------
+  function buscarAlunoPorCpf(cpf: string): Aluno | undefined {
+    const alvo = normalizarCpf(cpf)
+    return alunos.find((a) => normalizarCpf(a.cpf) === alvo)
+  }
+
+  function cadastrarSenhaAluno(cpf: string, senha: string): { ok: boolean; erro?: string } {
+    const aluno = buscarAlunoPorCpf(cpf)
+    if (!aluno) return { ok: false, erro: 'CPF não encontrado. Procure a recepção da academia.' }
+    if (aluno.senha_acesso) return { ok: false, erro: 'Este CPF já tem uma senha cadastrada. Faça login normalmente.' }
+    if (senha.length < 6) return { ok: false, erro: 'A senha precisa ter pelo menos 6 caracteres.' }
+    setAlunos((prev) => prev.map((a) => (a.id === aluno.id ? { ...a, senha_acesso: senha } : a)))
+    return { ok: true }
+  }
+
+  function resetarSenhaAluno(alunoId: string) {
+    setAlunos((prev) => prev.map((a) => (a.id === alunoId ? { ...a, senha_acesso: null } : a)))
+  }
+
+  function autenticarAluno(cpf: string, senha: string): Aluno | null {
+    const aluno = buscarAlunoPorCpf(cpf)
+    if (!aluno || !aluno.senha_acesso) return null
+    if (aluno.senha_acesso !== senha) return null
+    return aluno
   }
 
   function atualizarAluno(
@@ -1657,6 +1708,10 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
         permissoes,
         adicionarAluno,
         atualizarAluno,
+        buscarAlunoPorCpf,
+        cadastrarSenhaAluno,
+        resetarSenhaAluno,
+        autenticarAluno,
         marcarPresenca,
         marcarPago,
         autenticar,

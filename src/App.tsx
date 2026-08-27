@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
+import { AlunoAuthProvider, useAlunoAuth } from './lib/alunoAuth'
 import { DemoStoreProvider } from './lib/demoStore'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
@@ -9,8 +10,11 @@ import { CheckIn } from './pages/CheckIn'
 import { Financeiro } from './pages/Financeiro'
 import { Usuarios } from './pages/Usuarios'
 import { Produtos } from './pages/Produtos'
+import { PortalAlunoAcesso } from './pages/portal-aluno/PortalAlunoAcesso'
+import { PortalAlunoPainel } from './pages/portal-aluno/PortalAlunoPainel'
 
-function RotasProtegidas() {
+// ---------- Sistema interno (equipe: admin, professor, financeiro) ----------
+function RotasEquipe() {
   const { logado, loading } = useAuth()
 
   if (loading) {
@@ -38,13 +42,34 @@ function RotasProtegidas() {
   )
 }
 
+// ---------- Portal do aluno (login por CPF, independente do login da equipe) ----------
+function RotasPortalAluno() {
+  const { logado } = useAlunoAuth()
+  return logado ? <PortalAlunoPainel /> : <PortalAlunoAcesso />
+}
+
 export default function App() {
   return (
     <HashRouter>
       <DemoStoreProvider>
-        <AuthProvider>
-          <RotasProtegidas />
-        </AuthProvider>
+        <Routes>
+          <Route
+            path="/portal-aluno/*"
+            element={
+              <AlunoAuthProvider>
+                <RotasPortalAluno />
+              </AlunoAuthProvider>
+            }
+          />
+          <Route
+            path="/*"
+            element={
+              <AuthProvider>
+                <RotasEquipe />
+              </AuthProvider>
+            }
+          />
+        </Routes>
       </DemoStoreProvider>
     </HashRouter>
   )

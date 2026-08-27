@@ -6,6 +6,9 @@ export interface Aluno {
   id: string
   perfil_id: string | null
   nome: string
+  cpf: string
+  /** null = aluno ainda não fez o primeiro acesso ao portal (não cadastrou senha) */
+  senha_acesso: string | null
   email: string | null
   telefone: string | null
   data_nascimento: string | null

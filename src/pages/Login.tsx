@@ -72,6 +72,11 @@ export function Login() {
             modo demonstração · login já preenchido
           </p>
         )}
+        <p className="text-center text-xs font-mono text-gi-100/40 mt-3">
+          <a href="#/portal-aluno" className="hover:text-gi-100/70 transition-colors">
+            sou aluno — acessar minhas presenças
+          </a>
+        </p>
       </div>
     </div>
   )

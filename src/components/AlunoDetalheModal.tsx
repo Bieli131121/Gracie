@@ -17,7 +17,8 @@ const LABEL_FAIXA: Record<string, string> = {
 }
 
 export function AlunoDetalheModal({ aluno, onClose }: Props) {
-  const { presencasDoAluno, registrarPresenca, calcularElegibilidade, concederGrau, promoverFaixa } = useDemoStore()
+  const { presencasDoAluno, registrarPresenca, calcularElegibilidade, concederGrau, promoverFaixa, resetarSenhaAluno } =
+    useDemoStore()
   const [dataNova, setDataNova] = useState(new Date().toISOString().slice(0, 10))
   const [mensagem, setMensagem] = useState<string | null>(null)
   const [editando, setEditando] = useState(false)
@@ -62,6 +63,29 @@ export function AlunoDetalheModal({ aluno, onClose }: Props) {
         </div>
 
         <div className="p-6 space-y-6">
+          {/* ---------- Portal do aluno ---------- */}
+          <div className="rounded-sm border border-mat-700/15 bg-gi-50 p-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">CPF (login no portal)</p>
+              <p className="text-sm text-mat-900">{aluno.cpf || '— não cadastrado —'}</p>
+              <p className="text-xs text-mat-700/50 mt-1">
+                {aluno.senha_acesso ? 'Senha já cadastrada pelo aluno' : 'Aluno ainda não fez o primeiro acesso'}
+              </p>
+            </div>
+            {aluno.senha_acesso && (
+              <button
+                onClick={() => {
+                  if (confirm('Resetar a senha do portal? O aluno precisará cadastrar uma nova senha no próximo acesso.')) {
+                    resetarSenhaAluno(aluno.id)
+                  }
+                }}
+                className="text-xs font-medium border border-mat-700/20 px-3 py-1.5 rounded-sm hover:bg-white transition-colors shrink-0"
+              >
+                Resetar senha
+              </button>
+            )}
+          </div>
+
           {/* ---------- Elegibilidade para graduação ---------- */}
           {elegibilidade && (
             <div

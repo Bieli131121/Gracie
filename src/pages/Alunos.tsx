@@ -5,6 +5,7 @@ import { Aluno as AlunoType, FaixaCor } from '../types'
 import { Faixa } from '../components/Faixa'
 import { SemAcesso } from '../components/SemAcesso'
 import { AlunoDetalheModal } from '../components/AlunoDetalheModal'
+import { formatarCpf, cpfValido } from '../lib/cpf'
 
 export function Alunos() {
   const { temPermissao } = useAuth()
@@ -104,16 +105,17 @@ function NovoAlunoModal({
   onSalvar,
 }: {
   onClose: () => void
-  onSalvar: (dados: { nome: string; telefone: string; email: string; faixa: FaixaCor }) => void
+  onSalvar: (dados: { nome: string; telefone: string; email: string; faixa: FaixaCor; cpf: string }) => void
 }) {
   const [nome, setNome] = useState('')
+  const [cpf, setCpf] = useState('')
   const [telefone, setTelefone] = useState('')
   const [email, setEmail] = useState('')
   const [faixa, setFaixa] = useState<FaixaCor>('branca')
 
   function salvar() {
-    if (!nome.trim()) return
-    onSalvar({ nome, telefone, email, faixa })
+    if (!nome.trim() || !cpfValido(cpf)) return
+    onSalvar({ nome, telefone, email, faixa, cpf })
   }
 
   return (
@@ -127,6 +129,15 @@ function NovoAlunoModal({
           onChange={(e) => setNome(e.target.value)}
           className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-4 text-sm focus:border-brand-red outline-none"
         />
+
+        <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">CPF</label>
+        <input
+          value={cpf}
+          onChange={(e) => setCpf(formatarCpf(e.target.value))}
+          placeholder="000.000.000-00"
+          className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-1 text-sm focus:border-brand-red outline-none"
+        />
+        <p className="text-xs text-mat-700/40 mb-4">Usado pelo aluno para entrar no portal (portal-aluno)</p>
 
         <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Telefone</label>
         <input
@@ -164,7 +175,7 @@ function NovoAlunoModal({
           </button>
           <button
             onClick={salvar}
-            disabled={!nome.trim()}
+            disabled={!nome.trim() || !cpfValido(cpf)}
             className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded-sm transition-colors disabled:opacity-50"
           >
             Salvar

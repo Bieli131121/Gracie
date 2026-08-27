@@ -36,6 +36,7 @@ create table alunos (
   id uuid primary key default gen_random_uuid(),
   perfil_id uuid references perfis(id) on delete set null,
   nome text not null,
+  cpf text not null unique,
   email text,
   telefone text,
   data_nascimento date,
@@ -49,6 +50,77 @@ create table alunos (
 );
 
 create index idx_alunos_ativo on alunos(ativo);
+create index idx_alunos_cpf on alunos(cpf);
+
+-- ============================================================
+-- PORTAL DO ALUNO (login por CPF + senha própria)
+-- ------------------------------------------------------------
+-- O aluno se autentica no Supabase Auth com um e-mail sintético
+-- gerado a partir do CPF (ver cpfParaEmailAuth no front-end) —
+-- ele nunca vê nem digita esse e-mail, só o CPF.
+-- Antes de logar, o app precisa saber se aquele CPF existe e se
+-- já tem acesso configurado (perfil_id preenchido); como o
+-- visitante ainda está anônimo nesse momento, isso não pode
+-- passar pelas policies normais de "alunos" — por isso a função
+-- abaixo roda com SECURITY DEFINER e só devolve o mínimo
+-- necessário (nunca a linha inteira do aluno).
+-- ============================================================
+
+create or replace function cpf_normalizado(valor text)
+returns text as $$
+  select regexp_replace(valor, '\D', '', 'g')
+$$ language sql immutable;
+
+create or replace function aluno_status_cpf(p_cpf text)
+returns table(ja_tem_acesso boolean, nome text)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    (a.perfil_id is not null) as ja_tem_acesso,
+    a.nome
+  from alunos a
+  where cpf_normalizado(a.cpf) = cpf_normalizado(p_cpf)
+  limit 1
+$$;
+
+grant execute on function aluno_status_cpf(text) to anon, authenticated;
+
+-- Chamada logo após o aluno criar a conta no Supabase Auth (primeiro
+-- acesso): já está autenticado (auth.uid() existe), então vincula o
+-- registro de aluno correspondente ao CPF a essa conta.
+create or replace function vincular_aluno_por_cpf(p_cpf text, p_nome text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_aluno_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'É preciso estar autenticado para vincular o acesso.';
+  end if;
+
+  select id into v_aluno_id
+  from alunos
+  where cpf_normalizado(cpf) = cpf_normalizado(p_cpf) and perfil_id is null
+  limit 1;
+
+  if v_aluno_id is null then
+    raise exception 'CPF não encontrado ou já vinculado a outro acesso.';
+  end if;
+
+  insert into perfis (id, nome, role) values (auth.uid(), p_nome, 'aluno')
+  on conflict (id) do nothing;
+
+  update alunos set perfil_id = auth.uid() where id = v_aluno_id;
+end;
+$$;
+
+grant execute on function vincular_aluno_por_cpf(text, text) to authenticated;
 
 -- ---------- HISTÓRICO DE GRADUAÇÃO ----------
 create table graduacoes (
