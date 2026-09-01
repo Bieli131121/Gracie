@@ -24,7 +24,7 @@ export interface Mensalidade {
   id: string
   aluno_id: string
   plano_id: string | null
-  valor: number
+  valor_centavos: number
   vencimento: string
   pago_em: string | null
   status: StatusMensalidade
@@ -48,6 +48,10 @@ export interface Presenca {
   turma_id: string | null
   data: string
   hora: string
+  /** 'auto' = aluno fez check-in pelo próprio celular (com selfie); 'staff' = registrado pela equipe */
+  origem: 'staff' | 'auto'
+  foto_url: string | null
+  distancia_metros: number | null
 }
 
 export interface Perfil {
@@ -66,6 +70,7 @@ export type PermissionKey =
   | 'gerenciar_financeiro'
   | 'gerenciar_usuarios'
   | 'gerenciar_produtos'
+  | 'registrar_venda'
 
 export interface Usuario {
   id: string
@@ -86,6 +91,7 @@ export const PERMISSOES_LABEL: Record<PermissionKey, string> = {
   gerenciar_financeiro: 'Marcar mensalidades como pagas',
   gerenciar_usuarios: 'Gerenciar usuários e permissões',
   gerenciar_produtos: 'Gerenciar produtos e fornecedores',
+  registrar_venda: 'Registrar vendas (PDV)',
 }
 
 export const ROLE_LABEL: Record<UserRole, string> = {
@@ -262,8 +268,8 @@ export interface Produto {
   nome: string
   categoria: string
   fornecedorId: string | null
-  precoCusto: number
-  precoVenda: number
+  preco_custo_centavos: number
+  preco_venda_centavos: number
   estoqueAtual: number
   estoqueMinimo: number
   ativo: boolean

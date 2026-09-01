@@ -10,8 +10,8 @@ const FREQ_LABEL: Record<FrequenciaRecorrencia, string> = {
   anual: 'Anual',
 }
 
-const CAMPO = 'w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none bg-white'
-const LABEL = 'block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5'
+const CAMPO = 'w-full border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none bg-white'
+const LABEL = 'block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5'
 
 export function RecorrenciasPage({ podeGerenciar, usuarioNome }: { podeGerenciar: boolean; usuarioNome: string }) {
   const { recorrencias, categoriasFinanceiras, centrosCusto, contasFinanceiras, criarRecorrencia, alternarRecorrenciaAtiva, gerarLancamentosRecorrencia } =
@@ -21,45 +21,45 @@ export function RecorrenciasPage({ podeGerenciar, usuarioNome }: { podeGerenciar
 
   return (
     <div>
-      <p className="text-sm text-mat-700/60 mb-4 max-w-2xl">
+      <p className="text-sm text-content-secondary mb-4 max-w-2xl">
         Lançamentos que se repetem automaticamente (aluguel, internet, assinaturas...). Clique em "Gerar lançamentos" para
         criar as ocorrências pendentes até hoje — o sistema nunca duplica uma ocorrência já gerada.
       </p>
 
-      {mensagem && <p className="text-xs text-emerald-700 mb-4 bg-emerald-600/10 px-3 py-2 rounded-sm">{mensagem}</p>}
+      {mensagem && <p className="text-xs text-success mb-4 bg-success-bg px-3 py-2 rounded">{mensagem}</p>}
 
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-lg text-mat-900">Recorrências</h2>
+        <h2 className="font-display text-lg text-content-primary">Recorrências</h2>
         {podeGerenciar && (
           <button
             onClick={() => setMostrarForm(true)}
-            className="bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium px-4 py-2.5 rounded-sm transition-colors"
+            className="bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium px-4 py-2.5 rounded transition-colors"
           >
             + Nova recorrência
           </button>
         )}
       </div>
 
-      <div className="bg-white rounded-sm border border-mat-700/10 overflow-hidden">
+      <div className="bg-surface rounded-md border border-border shadow-xs overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-mat-700/10 text-left">
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Descrição</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Tipo</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Valor</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Frequência</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Início</th>
+            <tr className="border-b border-border text-left">
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Descrição</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Tipo</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Valor</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Frequência</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Início</th>
               <th className="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {recorrencias.map((r) => (
-              <tr key={r.id} className={`border-b border-mat-700/5 last:border-0 ${!r.ativa ? 'opacity-40' : ''}`}>
-                <td className="px-5 py-3.5 font-medium text-mat-900">{r.descricao}</td>
-                <td className="px-5 py-3.5 text-xs text-mat-700/70">{r.tipo === 'receita' ? 'Receita' : 'Despesa'}</td>
-                <td className="px-5 py-3.5 font-mono text-mat-900">{formatarCentavos(r.valor_centavos)}</td>
-                <td className="px-5 py-3.5 text-xs text-mat-700/70">{FREQ_LABEL[r.frequencia]}</td>
-                <td className="px-5 py-3.5 font-mono text-xs text-mat-700/70">
+              <tr key={r.id} className={`border-b border-border-subtle last:border-0 ${!r.ativa ? 'opacity-40' : ''}`}>
+                <td className="px-5 py-3.5 font-medium text-content-primary">{r.descricao}</td>
+                <td className="px-5 py-3.5 text-xs text-content-secondary">{r.tipo === 'receita' ? 'Receita' : 'Despesa'}</td>
+                <td className="px-5 py-3.5 font-mono text-content-primary">{formatarCentavos(r.valor_centavos)}</td>
+                <td className="px-5 py-3.5 text-xs text-content-secondary">{FREQ_LABEL[r.frequencia]}</td>
+                <td className="px-5 py-3.5 font-mono text-xs text-content-secondary">
                   {new Date(r.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')}
                 </td>
                 <td className="px-5 py-3.5 text-right whitespace-nowrap">
@@ -81,7 +81,7 @@ export function RecorrenciasPage({ podeGerenciar, usuarioNome }: { podeGerenciar
                   {podeGerenciar && (
                     <button
                       onClick={() => alternarRecorrenciaAtiva(r.id)}
-                      className="text-xs font-medium text-mat-700/50 hover:text-mat-900"
+                      className="text-xs font-medium text-content-muted hover:text-content-primary"
                     >
                       {r.ativa ? 'Desativar' : 'Reativar'}
                     </button>
@@ -91,7 +91,7 @@ export function RecorrenciasPage({ podeGerenciar, usuarioNome }: { podeGerenciar
             ))}
             {recorrencias.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-mat-700/40 text-sm">
+                <td colSpan={6} className="px-5 py-10 text-center text-content-muted text-sm">
                   Nenhuma recorrência cadastrada.
                 </td>
               </tr>
@@ -169,11 +169,11 @@ function NovaRecorrenciaModal({
 
   return (
     <div className="fixed inset-0 bg-mat-900/60 flex items-center justify-center px-4 z-50 overflow-y-auto py-8">
-      <div className="bg-white rounded-sm p-6 w-full max-w-lg">
-        <h2 className="font-display text-lg text-mat-900 mb-5">Nova recorrência</h2>
-        {erro && <p className="text-xs text-brand-red mb-4 bg-brand-red/10 px-3 py-2 rounded-sm">{erro}</p>}
+      <div className="bg-surface rounded p-6 w-full max-w-lg">
+        <h2 className="font-display text-lg text-content-primary mb-5">Nova recorrência</h2>
+        {erro && <p className="text-xs text-brand-red mb-4 bg-brand-red/10 px-3 py-2 rounded">{erro}</p>}
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className={LABEL}>Tipo</label>
             <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoLancamento)} className={CAMPO}>
@@ -196,7 +196,7 @@ function NovaRecorrenciaModal({
         <label className={LABEL}>Descrição</label>
         <input value={descricao} onChange={(e) => setDescricao(e.target.value)} className={`${CAMPO} mb-4`} />
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className={LABEL}>Valor (R$)</label>
             <input type="number" min={0.01} step={0.01} value={valor} onChange={(e) => setValor(Number(e.target.value))} className={CAMPO} />
@@ -207,7 +207,7 @@ function NovaRecorrenciaModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className={LABEL}>Categoria</label>
             <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={CAMPO}>
@@ -236,7 +236,7 @@ function NovaRecorrenciaModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div>
             <label className={LABEL}>Conta financeira</label>
             <select value={contaId} onChange={(e) => setContaId(e.target.value)} className={CAMPO}>
@@ -257,13 +257,13 @@ function NovaRecorrenciaModal({
         </div>
 
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 border border-mat-700/20 text-mat-700 text-sm font-medium py-2.5 rounded-sm hover:bg-gi-50 transition-colors">
+          <button onClick={onClose} className="flex-1 border border-border text-content-secondary text-sm font-medium py-2.5 rounded hover:bg-bg-subtle transition-colors">
             Cancelar
           </button>
           <button
             onClick={salvar}
             disabled={!descricao.trim() || !(valor > 0)}
-            className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded-sm transition-colors disabled:opacity-50"
+            className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded transition-colors disabled:opacity-50"
           >
             Salvar
           </button>

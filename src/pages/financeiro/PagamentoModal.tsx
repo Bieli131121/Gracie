@@ -35,9 +35,9 @@ export function PagamentoModal({
 
   const acao = lancamento.tipo === 'despesa' ? 'Pagamento' : 'Recebimento'
 
-  function confirmar() {
+  async function confirmar() {
     if (!contaId) return setErro('Selecione a conta financeira.')
-    const r = registrarPagamentoRecebimento(
+    const r = await registrarPagamentoRecebimento(
       lancamento.id,
       { valor, data, contaFinanceiraId: contaId, formaPagamento },
       usuarioNome
@@ -48,20 +48,20 @@ export function PagamentoModal({
 
   return (
     <div className="fixed inset-0 bg-mat-900/60 flex items-center justify-center px-4 z-50">
-      <div className="bg-white rounded-sm p-6 w-full max-w-md">
-        <h2 className="font-display text-lg text-mat-900 mb-1">{acao}</h2>
-        <p className="text-sm text-mat-700/60 mb-5">{lancamento.descricao}</p>
+      <div className="bg-surface rounded p-6 w-full max-w-md">
+        <h2 className="font-display text-lg text-content-primary mb-1">{acao}</h2>
+        <p className="text-sm text-content-secondary mb-5">{lancamento.descricao}</p>
 
-        <div className="bg-gi-50 rounded-sm px-4 py-3 mb-5 text-xs font-mono flex justify-between">
-          <span className="text-mat-700/60">Restante devido</span>
-          <span className="text-mat-900 font-medium">{formatarCentavos(restanteCentavos)}</span>
+        <div className="bg-bg-subtle rounded px-4 py-3 mb-5 text-xs font-mono flex justify-between">
+          <span className="text-content-secondary">Restante devido</span>
+          <span className="text-content-primary font-medium">{formatarCentavos(restanteCentavos)}</span>
         </div>
 
-        {erro && <p className="text-xs text-brand-red mb-4 bg-brand-red/10 px-3 py-2 rounded-sm">{erro}</p>}
+        {erro && <p className="text-xs text-brand-red mb-4 bg-brand-red/10 px-3 py-2 rounded">{erro}</p>}
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">
+            <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">
               Valor a {lancamento.tipo === 'despesa' ? 'pagar' : 'receber'} (R$)
             </label>
             <input
@@ -71,29 +71,29 @@ export function PagamentoModal({
               step={0.01}
               value={valor}
               onChange={(e) => setValor(Number(e.target.value))}
-              className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none"
+              className="w-full border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none"
             />
           </div>
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Data</label>
+            <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">Data</label>
             <input
               type="date"
               value={data}
               onChange={(e) => setData(e.target.value)}
-              className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none"
+              className="w-full border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">
+            <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">
               Conta financeira
             </label>
             <select
               value={contaId}
               onChange={(e) => setContaId(e.target.value)}
-              className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none bg-white"
+              className="w-full border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none bg-surface"
             >
               {contasFinanceiras
                 .filter((c) => c.ativa)
@@ -105,13 +105,13 @@ export function PagamentoModal({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">
+            <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">
               Forma de pagamento
             </label>
             <select
               value={formaPagamento}
               onChange={(e) => setFormaPagamento(e.target.value)}
-              className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none bg-white"
+              className="w-full border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none bg-surface"
             >
               <option value="pix">Pix</option>
               <option value="dinheiro">Dinheiro</option>
@@ -131,14 +131,14 @@ export function PagamentoModal({
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 border border-mat-700/20 text-mat-700 text-sm font-medium py-2.5 rounded-sm hover:bg-gi-50 transition-colors"
+            className="flex-1 border border-border text-content-secondary text-sm font-medium py-2.5 rounded hover:bg-bg-subtle transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={confirmar}
             disabled={!(valor > 0)}
-            className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded-sm transition-colors disabled:opacity-50"
+            className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded transition-colors disabled:opacity-50"
           >
             Confirmar {acao.toLowerCase()}
           </button>

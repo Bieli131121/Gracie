@@ -1,16 +1,29 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import {
+  LayoutGrid,
+  Users,
+  ClipboardCheck,
+  ShoppingCart,
+  Wallet,
+  Package,
+  ShieldCheck,
+  Menu,
+  X,
+  LogOut,
+} from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { PermissionKey, ROLE_LABEL } from '../types'
 import logo from '../assets/logo.png'
 
-const LINKS: { to: string; label: string; end?: boolean; permissao: PermissionKey }[] = [
-  { to: '/', label: 'Painel', end: true, permissao: 'ver_painel' },
-  { to: '/alunos', label: 'Alunos', permissao: 'gerenciar_alunos' },
-  { to: '/checkin', label: 'Check-in', permissao: 'fazer_checkin' },
-  { to: '/financeiro', label: 'Financeiro', permissao: 'ver_financeiro' },
-  { to: '/produtos', label: 'Produtos', permissao: 'gerenciar_produtos' },
-  { to: '/usuarios', label: 'Administração', permissao: 'gerenciar_usuarios' },
+const LINKS: { to: string; label: string; end?: boolean; permissao: PermissionKey; icon: typeof LayoutGrid }[] = [
+  { to: '/', label: 'Painel', end: true, permissao: 'ver_painel', icon: LayoutGrid },
+  { to: '/alunos', label: 'Alunos', permissao: 'gerenciar_alunos', icon: Users },
+  { to: '/checkin', label: 'Check-in', permissao: 'fazer_checkin', icon: ClipboardCheck },
+  { to: '/venda', label: 'Venda', permissao: 'registrar_venda', icon: ShoppingCart },
+  { to: '/financeiro', label: 'Financeiro', permissao: 'ver_financeiro', icon: Wallet },
+  { to: '/produtos', label: 'Produtos', permissao: 'gerenciar_produtos', icon: Package },
+  { to: '/usuarios', label: 'Administração', permissao: 'gerenciar_usuarios', icon: ShieldCheck },
 ]
 
 export function Layout() {
@@ -18,93 +31,96 @@ export function Layout() {
   const location = useLocation()
   const [menuAberto, setMenuAberto] = useState(false)
   const linksVisiveis = LINKS.filter((link) => temPermissao(link.permissao))
+  const paginaAtual = LINKS.find((l) => (l.end ? location.pathname === l.to : location.pathname.startsWith(l.to)))
 
-  // Fecha o menu automaticamente ao trocar de página (mobile)
   const fecharMenu = () => setMenuAberto(false)
 
   return (
-    <div className="flex min-h-screen bg-gi-50">
-      {/* ---------- Barra superior — só aparece no mobile ---------- */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-mat-900 text-gi-50 flex items-center justify-between px-4 z-30">
-        <div className="flex items-center gap-2">
-          <img src={logo} alt="Gracie Barra" className="w-8 h-8" />
-          <span className="font-display text-sm tracking-tight">GRACIE BARRA</span>
+    <div className="flex min-h-screen bg-bg">
+      {/* ---------- Barra superior — mobile ---------- */}
+      <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-surface border-b border-border flex items-center justify-between px-4 z-30">
+        <div className="flex items-center gap-2.5">
+          <img src={logo} alt="Gracie Barra" className="w-7 h-7" />
+          <span className="text-sm font-medium text-content-primary">{paginaAtual?.label ?? 'GB Sistema'}</span>
         </div>
         <button
           onClick={() => setMenuAberto((v) => !v)}
           aria-label="Abrir menu"
-          className="p-2 -mr-2 text-gi-50"
+          className="p-2 -mr-2 text-content-secondary"
         >
-          {menuAberto ? (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
-            </svg>
-          ) : (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
-            </svg>
-          )}
+          {menuAberto ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
-      </div>
+      </header>
 
-      {/* ---------- Fundo escurecido ao abrir o menu no mobile ---------- */}
       {menuAberto && (
-        <div className="md:hidden fixed inset-0 bg-mat-900/60 z-30" onClick={fecharMenu} aria-hidden="true" />
+        <div className="md:hidden fixed inset-0 bg-mat-950/50 z-30 animate-fade-in" onClick={fecharMenu} aria-hidden="true" />
       )}
 
-      {/* ---------- Sidebar: fixa no desktop, gaveta deslizante no mobile ---------- */}
+      {/* ---------- Sidebar ---------- */}
       <aside
-        className={`w-64 md:w-60 shrink-0 bg-mat-900 text-gi-50 flex flex-col fixed md:static inset-y-0 left-0 z-40
+        className={`w-64 md:w-60 shrink-0 bg-mat-900 text-white flex flex-col fixed md:static inset-y-0 left-0 z-40
           transition-transform duration-200 ease-out
           ${menuAberto ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
       >
-        <div className="px-6 py-6 border-b border-mat-700 hidden md:flex items-center gap-3">
-          <img src={logo} alt="Gracie Barra" className="w-11 h-11" />
+        <div className="px-5 py-5 hidden md:flex items-center gap-3">
+          <img src={logo} alt="Gracie Barra" className="w-9 h-9" />
           <div>
-            <div className="font-display text-sm tracking-tight text-gi-50 leading-tight">GRACIE<br/>BARRA</div>
-            <div className="text-[10px] font-mono text-gi-100/40 mt-0.5">sistema de gestão</div>
+            <div className="font-display text-xs tracking-tight text-white leading-tight">GRACIE BARRA</div>
+            <div className="text-[10px] font-mono text-white/35 mt-0.5 uppercase tracking-wide">gestão</div>
           </div>
         </div>
-        {/* Espaço equivalente à barra superior mobile, pra gaveta não começar por baixo dela */}
         <div className="h-14 md:hidden shrink-0" />
-        <nav className="flex-1 py-4 overflow-y-auto">
-          {linksVisiveis.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              onClick={fecharMenu}
-              className={({ isActive }) =>
-                `block px-6 py-3 text-sm font-medium border-l-2 transition-colors ${
-                  isActive
-                    ? 'border-brand-red bg-mat-800 text-gi-50'
-                    : 'border-transparent text-gi-100/60 hover:text-gi-50 hover:bg-mat-800/50'
-                }`
-              }
-            >
-              {link.label}
-            </NavLink>
-          ))}
+
+        <nav className="flex-1 py-3 px-3 overflow-y-auto">
+          <div className="text-caption uppercase text-white/30 font-medium px-2.5 mb-2 mt-1">Menu</div>
+          {linksVisiveis.map((link) => {
+            const Icon = link.icon
+            return (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.end}
+                onClick={fecharMenu}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-2.5 py-2 rounded text-sm font-medium mb-0.5 transition-colors ${
+                    isActive ? 'bg-white/10 text-white' : 'text-white/55 hover:text-white hover:bg-white/5'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon className="w-4 h-4 shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
+                    <span>{link.label}</span>
+                  </>
+                )}
+              </NavLink>
+            )
+          })}
         </nav>
-        <div className="px-6 py-4 border-t border-mat-700 text-xs shrink-0">
-          <div
-            className={`font-mono mb-1 uppercase text-[10px] tracking-wide ${
-              perfil?.role === 'admin' ? 'text-brand-red' : 'text-brand-blue'
-            }`}
-          >
-            {perfil ? ROLE_LABEL[perfil.role] : '—'}
+
+        <div className="px-4 py-4 border-t border-white/10 shrink-0">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium text-white shrink-0">
+              {perfil?.nome?.charAt(0).toUpperCase() ?? '?'}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm text-white truncate leading-tight">{perfil?.nome ?? 'Carregando...'}</div>
+              <div className="text-[11px] font-mono uppercase tracking-wide text-white/40">
+                {perfil ? ROLE_LABEL[perfil.role] : '—'}
+              </div>
+            </div>
           </div>
-          <div className="text-gi-50 mb-3">{perfil?.nome ?? 'Carregando...'}</div>
           <button
             onClick={signOut}
-            className="text-brand-red hover:text-white transition-colors font-medium"
+            className="flex items-center gap-2 text-xs font-medium text-white/50 hover:text-white transition-colors w-full"
           >
+            <LogOut className="w-3.5 h-3.5" />
             Sair
           </button>
         </div>
       </aside>
 
-      <main key={location.pathname} className="flex-1 overflow-auto pt-14 md:pt-0 min-w-0">
+      <main key={location.pathname} className="flex-1 overflow-auto pt-14 md:pt-0 min-w-0 animate-fade-in">
         <Outlet />
       </main>
     </div>

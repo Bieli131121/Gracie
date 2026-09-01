@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth, DEMO_MODE } from '../lib/auth'
 import { DEMO_ADMIN_EMAIL, DEMO_ADMIN_SENHA } from '../lib/demoStore'
+import { Button, Input } from '../components/ui'
 import logo from '../assets/logo.png'
 
 export function Login() {
@@ -28,52 +29,44 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-mat-900 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-10">
-          <img src={logo} alt="Gracie Barra" className="w-20 h-20 mx-auto mb-4" />
-          <div className="font-display text-lg text-gi-50 tracking-tight">GRACIE BARRA</div>
-          <div className="text-xs font-mono text-gi-100/40 mt-1">sistema de gestão</div>
+    <div className="min-h-screen bg-mat-950 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm animate-scale-in">
+        <div className="text-center mb-8">
+          <img src={logo} alt="Gracie Barra" className="w-16 h-16 mx-auto mb-4" />
+          <div className="font-display text-base text-white tracking-tight">GRACIE BARRA</div>
+          <div className="text-xs font-mono text-white/35 mt-1 uppercase tracking-wide">sistema de gestão</div>
         </div>
-        <form onSubmit={handleSubmit} className="bg-gi-50 rounded-sm p-8">
-          <label className="block text-xs font-mono uppercase tracking-wide text-mat-700 mb-1.5">
-            E-mail
-          </label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-mat-700/20 rounded-sm px-3 py-2.5 mb-4 text-sm focus:border-brand-red outline-none"
-            placeholder="professor@academia.com"
-          />
-          <label className="block text-xs font-mono uppercase tracking-wide text-mat-700 mb-1.5">
-            Senha
-          </label>
-          <input
-            type="password"
-            required
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            className="w-full border border-mat-700/20 rounded-sm px-3 py-2.5 mb-5 text-sm focus:border-brand-red outline-none"
-            placeholder="••••••••"
-          />
-          {erro && <p className="text-brand-red text-xs mb-4">{erro}</p>}
-          <button
-            type="submit"
-            disabled={carregando}
-            className="w-full bg-brand-red hover:bg-brand-redDark text-white font-medium py-2.5 rounded-sm transition-colors disabled:opacity-50"
-          >
-            {carregando ? 'Entrando...' : 'Entrar'}
-          </button>
+        <form onSubmit={handleSubmit} className="bg-surface rounded-lg shadow-modal p-7 border border-white/5">
+          <div className="space-y-4 mb-5">
+            <Input
+              label="E-mail"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="professor@academia.com"
+            />
+            <Input
+              label="Senha"
+              type="password"
+              required
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
+          {erro && <p className="text-danger text-xs mb-4">{erro}</p>}
+          <Button type="submit" loading={carregando} className="w-full">
+            Entrar
+          </Button>
         </form>
         {DEMO_MODE && (
-          <p className="text-center text-xs font-mono text-gi-100/40 mt-5">
+          <p className="text-center text-xs font-mono text-white/30 mt-5">
             modo demonstração · login já preenchido
           </p>
         )}
-        <p className="text-center text-xs font-mono text-gi-100/40 mt-3">
-          <a href="#/portal-aluno" className="hover:text-gi-100/70 transition-colors">
+        <p className="text-center text-xs font-mono text-white/30 mt-3">
+          <a href="#/portal-aluno" className="hover:text-white/60 transition-colors">
             sou aluno — acessar minhas presenças
           </a>
         </p>

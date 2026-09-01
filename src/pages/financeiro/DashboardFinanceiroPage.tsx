@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { Wallet, TrendingUp, TrendingDown, Scale, Clock, AlertTriangle, CalendarClock } from 'lucide-react'
 import { useDemoStore } from '../../lib/demoStore'
 import { formatarCentavos } from '../../lib/money'
+import { Card, StatCard } from '../../components/ui'
 
 type Periodo = 'hoje' | 'semana' | 'mes' | 'mes_anterior' | 'ano' | 'personalizado'
 
@@ -88,77 +90,73 @@ export function DashboardFinanceiroPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2 mb-6">
-        {(Object.keys(PERIODO_LABEL) as Periodo[]).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPeriodo(p)}
-            className={`text-xs font-mono uppercase px-3 py-1.5 rounded-sm border transition-colors ${
-              periodo === p ? 'bg-mat-900 text-white border-mat-900' : 'bg-white text-mat-700/60 border-mat-700/15 hover:border-mat-700/30'
-            }`}
-          >
-            {PERIODO_LABEL[p]}
-          </button>
-        ))}
-        {periodo === 'personalizado' && (
-          <>
-            <input type="date" value={inicioPersonalizado} onChange={(e) => setInicioPersonalizado(e.target.value)} className="border border-mat-700/20 rounded-sm px-2 py-1 text-xs bg-white" />
-            <input type="date" value={fimPersonalizado} onChange={(e) => setFimPersonalizado(e.target.value)} className="border border-mat-700/20 rounded-sm px-2 py-1 text-xs bg-white" />
-          </>
-        )}
+      {/* Saldo atual: não depende do período selecionado, por isso fica isolado num cartão de destaque */}
+      <Card className="bg-mat-900 border-mat-900 mb-7 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className="text-caption uppercase tracking-wide text-white/45 mb-1.5 flex items-center gap-1.5">
+            <Wallet className="w-3.5 h-3.5" /> Saldo atual em caixa
+          </div>
+          <div className="font-mono text-3xl font-medium text-white">{formatarCentavos(saldoAtual)}</div>
+        </div>
+      </Card>
+
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+        <h2 className="text-h4 font-medium text-content-primary">Resumo do período</h2>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(PERIODO_LABEL) as Periodo[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriodo(p)}
+              className={`text-xs font-medium px-3 py-1.5 rounded border transition-colors ${
+                periodo === p ? 'bg-mat-900 text-white border-mat-900' : 'bg-surface text-content-secondary border-border hover:border-border-strong'
+              }`}
+            >
+              {PERIODO_LABEL[p]}
+            </button>
+          ))}
+        </div>
+      </div>
+      {periodo === 'personalizado' && (
+        <div className="flex gap-2 mb-4">
+          <input type="date" value={inicioPersonalizado} onChange={(e) => setInicioPersonalizado(e.target.value)} className="border border-border rounded px-2 py-1 text-xs bg-surface" />
+          <input type="date" value={fimPersonalizado} onChange={(e) => setFimPersonalizado(e.target.value)} className="border border-border rounded px-2 py-1 text-xs bg-surface" />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+        <StatCard label="Receitas do período" valor={formatarCentavos(dadosPeriodo.totalReceitas)} icon={TrendingUp} tom="success" />
+        <StatCard label="Despesas do período" valor={formatarCentavos(dadosPeriodo.totalDespesas)} icon={TrendingDown} tom="danger" />
+        <StatCard label="Resultado do período" valor={formatarCentavos(resultado)} icon={Scale} tom={resultado >= 0 ? 'success' : 'danger'} />
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-4">
-        <Kpi label="Saldo atual" valor={formatarCentavos(saldoAtual)} />
-        <Kpi label="Receitas do período" valor={formatarCentavos(dadosPeriodo.totalReceitas)} tom="verde" />
-        <Kpi label="Despesas do período" valor={formatarCentavos(dadosPeriodo.totalDespesas)} tom="vermelho" />
-        <Kpi label="Resultado do período" valor={formatarCentavos(resultado)} tom={resultado >= 0 ? 'verde' : 'vermelho'} />
+      <h2 className="text-h4 font-medium text-content-primary mb-3">Em aberto agora</h2>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+        <StatCard label="Contas a pagar" valor={formatarCentavos(contasAPagar)} icon={Clock} />
+        <StatCard label="Contas a receber" valor={formatarCentavos(contasAReceber)} icon={Clock} />
+        <StatCard label="Vencidos" valor={String(vencidas)} icon={AlertTriangle} tom={vencidas > 0 ? 'danger' : 'neutral'} />
+        <StatCard label="A vencer" valor={String(aVencer)} icon={CalendarClock} />
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <Kpi label="Contas a pagar (em aberto)" valor={formatarCentavos(contasAPagar)} compacto />
-        <Kpi label="Contas a receber (em aberto)" valor={formatarCentavos(contasAReceber)} compacto />
-        <Kpi label="Lançamentos vencidos" valor={vencidas} compacto tom={vencidas > 0 ? 'vermelho' : 'neutro'} />
-        <Kpi label="A vencer" valor={aVencer} compacto />
-      </div>
-
-      <div className="bg-white rounded-sm border border-mat-700/10 p-5">
-        <h3 className="font-medium text-sm text-mat-900 mb-1">Despesas por categoria</h3>
-        <p className="text-xs text-mat-700/50 mb-4">Pagas no período selecionado</p>
+      <Card>
+        <h3 className="text-h4 font-medium text-content-primary mb-0.5">Despesas por categoria</h3>
+        <p className="text-xs text-content-muted mb-4">Pagas no período selecionado</p>
         {dadosPeriodo.despesasPorCategoria.length > 0 ? (
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={dadosPeriodo.despesasPorCategoria} layout="vertical" margin={{ left: 10, right: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#33333812" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#333338' }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="categoria" tick={{ fontSize: 11, fill: '#333338' }} axisLine={false} tickLine={false} width={110} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1C1C1E0C" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: '#5B5B60' }} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="categoria" tick={{ fontSize: 11, fill: '#5B5B60' }} axisLine={false} tickLine={false} width={110} />
               <Tooltip
                 formatter={(value: number) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                contentStyle={{ fontSize: 12, borderRadius: 4, border: '1px solid #33333820' }}
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E4E4E1' }}
               />
               <Bar dataKey="valor" name="Despesa" fill="#E22726" radius={[0, 3, 3, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-sm text-mat-700/40 py-10 text-center">Nenhuma despesa paga no período selecionado.</p>
+          <p className="text-sm text-content-muted py-10 text-center">Nenhuma despesa paga no período selecionado.</p>
         )}
-      </div>
-    </div>
-  )
-}
-
-type Tom = 'neutro' | 'verde' | 'vermelho'
-
-function Kpi({ label, valor, tom = 'neutro', compacto = false }: { label: string; valor: string | number; tom?: Tom; compacto?: boolean }) {
-  const estilos: Record<Tom, { borda: string; fundo: string; texto: string }> = {
-    neutro: { borda: 'border-mat-700/10', fundo: 'bg-white', texto: 'text-mat-900' },
-    verde: { borda: 'border-emerald-600/20', fundo: 'bg-emerald-600/5', texto: 'text-emerald-700' },
-    vermelho: { borda: 'border-brand-red/30', fundo: 'bg-brand-red/5', texto: 'text-brand-red' },
-  }
-  const e = estilos[tom]
-  return (
-    <div className={`rounded-sm p-4 border ${e.fundo} ${e.borda}`}>
-      <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-2">{label}</div>
-      <div className={`font-display ${compacto ? 'text-xl' : 'text-2xl'} ${e.texto}`}>{valor}</div>
+      </Card>
     </div>
   )
 }

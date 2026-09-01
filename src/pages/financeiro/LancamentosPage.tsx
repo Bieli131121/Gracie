@@ -1,18 +1,21 @@
 import { useState } from 'react'
+import { Plus, FileSearch } from 'lucide-react'
 import { useDemoStore } from '../../lib/demoStore'
 import { TipoLancamento, StatusLancamento } from '../../types'
 import { formatarCentavos } from '../../lib/money'
+import { Card, StatCard, Badge, Button, EmptyState, Pagination } from '../../components/ui'
+import { usePaginacao } from '../../lib/usePaginacao'
 import { LancamentoFormModal } from './LancamentoFormModal'
 import { PagamentoModal } from './PagamentoModal'
 
-const STATUS_STYLE: Record<StatusLancamento, string> = {
-  pendente: 'bg-mat-900/8 text-mat-700',
-  vencido: 'bg-brand-red/10 text-brand-red',
-  parcialmente_pago: 'bg-brand-blue/10 text-brand-blue',
-  parcialmente_recebido: 'bg-brand-blue/10 text-brand-blue',
-  pago: 'bg-emerald-600/10 text-emerald-700',
-  recebido: 'bg-emerald-600/10 text-emerald-700',
-  cancelado: 'bg-mat-700/10 text-mat-700/40',
+const STATUS_TOM: Record<StatusLancamento, 'neutral' | 'danger' | 'info' | 'success'> = {
+  pendente: 'neutral',
+  vencido: 'danger',
+  parcialmente_pago: 'info',
+  parcialmente_recebido: 'info',
+  pago: 'success',
+  recebido: 'success',
+  cancelado: 'neutral',
 }
 
 const STATUS_LABEL: Record<StatusLancamento, string> = {
@@ -73,6 +76,8 @@ export function LancamentosPage({
     )
     .sort((a, b) => (a.data_vencimento < b.data_vencimento ? 1 : -1))
 
+  const { itensPagina, setPaginaAtual, ...paginacao } = usePaginacao(filtrados, 15)
+
   const ativos = doTipo.filter((l) => l.statusEfetivo !== 'cancelado')
   const totalEmAberto = ativos
     .filter((l) => l.statusEfetivo !== 'pago' && l.statusEfetivo !== 'recebido')
@@ -89,19 +94,10 @@ export function LancamentosPage({
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-sm border border-mat-700/10 p-4">
-          <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">Total em aberto</div>
-          <div className="font-display text-xl text-mat-900">{formatarCentavos(totalEmAberto)}</div>
-        </div>
-        <div className="bg-white rounded-sm border border-mat-700/10 p-4">
-          <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">Vencido</div>
-          <div className="font-display text-xl text-brand-red">{formatarCentavos(totalVencido)}</div>
-        </div>
-        <div className="bg-white rounded-sm border border-mat-700/10 p-4">
-          <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">{quitadoLabel} (total)</div>
-          <div className="font-display text-xl text-emerald-700">{formatarCentavos(totalQuitado)}</div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <StatCard label="Total em aberto" valor={formatarCentavos(totalEmAberto)} />
+        <StatCard label="Vencido" valor={formatarCentavos(totalVencido)} tom="danger" />
+        <StatCard label={`${quitadoLabel} (total)`} valor={formatarCentavos(totalQuitado)} tom="success" />
       </div>
 
       <div className="flex items-center justify-between mb-4 gap-4">
@@ -109,15 +105,13 @@ export function LancamentosPage({
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar por descrição ou cliente/fornecedor..."
-          className="w-full max-w-sm border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none bg-white"
+          className="w-full max-w-sm border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none bg-surface"
         />
         {podeGerenciar && (
-          <button
-            onClick={() => setMostrarForm(true)}
-            className="bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium px-4 py-2.5 rounded-sm transition-colors shrink-0"
-          >
-            + Nova {tipo === 'receita' ? 'receita' : 'despesa'}
-          </button>
+          <Button onClick={() => setMostrarForm(true)} className="shrink-0">
+            <Plus className="w-4 h-4" />
+            Nova {tipo === 'receita' ? 'receita' : 'despesa'}
+          </Button>
         )}
       </div>
 
@@ -135,10 +129,10 @@ export function LancamentosPage({
           <button
             key={f}
             onClick={() => setFiltro(f)}
-            className={`text-xs font-mono uppercase px-3 py-1.5 rounded-sm border transition-colors ${
+            className={`text-xs font-medium px-3 py-1.5 rounded border transition-colors ${
               filtro === f
                 ? 'bg-mat-900 text-white border-mat-900'
-                : 'bg-white text-mat-700/60 border-mat-700/15 hover:border-mat-700/30'
+                : 'bg-surface text-content-secondary border-border hover:border-border-strong'
             }`}
           >
             {label}
@@ -146,40 +140,41 @@ export function LancamentosPage({
         ))}
       </div>
 
-      {erro && <p className="text-xs text-brand-red mb-4 bg-brand-red/10 px-3 py-2 rounded-sm">{erro}</p>}
+      {erro && <p className="text-xs text-danger mb-4 bg-danger-bg px-3 py-2 rounded">{erro}</p>}
 
-      <div className="bg-white rounded-sm border border-mat-700/10 overflow-hidden">
+      <Card padding="none">
+        {filtrados.length === 0 ? (
+          <EmptyState icon={FileSearch} title="Nenhum lançamento encontrado" description="Ajuste os filtros ou cadastre um novo lançamento." />
+        ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-mat-700/10 text-left">
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Descrição</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Categoria</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Vencimento</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Valor</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Restante</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Status</th>
-              <th className="px-5 py-3"></th>
+            <tr className="border-b border-border-subtle text-left">
+              <th className="px-5 py-2.5 text-caption uppercase tracking-wide text-content-muted font-medium">Descrição</th>
+              <th className="px-5 py-2.5 text-caption uppercase tracking-wide text-content-muted font-medium">Categoria</th>
+              <th className="px-5 py-2.5 text-caption uppercase tracking-wide text-content-muted font-medium">Vencimento</th>
+              <th className="px-5 py-2.5 text-caption uppercase tracking-wide text-content-muted font-medium">Valor</th>
+              <th className="px-5 py-2.5 text-caption uppercase tracking-wide text-content-muted font-medium">Restante</th>
+              <th className="px-5 py-2.5 text-caption uppercase tracking-wide text-content-muted font-medium">Status</th>
+              <th className="px-5 py-2.5"></th>
             </tr>
           </thead>
           <tbody>
-            {filtrados.map((l) => (
-              <tr key={l.id} className="border-b border-mat-700/5 last:border-0 hover:bg-gi-50">
+            {itensPagina.map((l) => (
+              <tr key={l.id} className="border-b border-border-subtle last:border-0 hover:bg-bg-subtle transition-colors">
                 <td className="px-5 py-3.5">
-                  <div className="font-medium text-mat-900">{l.descricao}</div>
-                  {l.cliente_fornecedor && <div className="text-xs text-mat-700/50">{l.cliente_fornecedor}</div>}
+                  <div className="font-medium text-content-primary">{l.descricao}</div>
+                  {l.cliente_fornecedor && <div className="text-xs text-content-muted">{l.cliente_fornecedor}</div>}
                 </td>
-                <td className="px-5 py-3.5 text-xs text-mat-700/70">{l.categoriaNome}</td>
-                <td className="px-5 py-3.5 font-mono text-xs text-mat-700/70">
+                <td className="px-5 py-3.5 text-xs text-content-secondary">{l.categoriaNome}</td>
+                <td className="px-5 py-3.5 font-mono text-xs text-content-secondary">
                   {new Date(l.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
                 </td>
-                <td className="px-5 py-3.5 font-mono text-mat-900">{formatarCentavos(l.valor_centavos)}</td>
-                <td className="px-5 py-3.5 font-mono text-mat-700/70">
+                <td className="px-5 py-3.5 font-mono text-content-primary">{formatarCentavos(l.valor_centavos)}</td>
+                <td className="px-5 py-3.5 font-mono text-content-secondary">
                   {l.restanteCentavos > 0 ? formatarCentavos(l.restanteCentavos) : '—'}
                 </td>
                 <td className="px-5 py-3.5">
-                  <span className={`text-xs font-mono px-2 py-1 rounded-sm ${STATUS_STYLE[l.statusEfetivo]}`}>
-                    {STATUS_LABEL[l.statusEfetivo]}
-                  </span>
+                  <Badge tom={STATUS_TOM[l.statusEfetivo]}>{STATUS_LABEL[l.statusEfetivo]}</Badge>
                 </td>
                 <td className="px-5 py-3.5 text-right whitespace-nowrap">
                   {podeGerenciar && l.statusEfetivo !== 'cancelado' && l.statusEfetivo !== 'pago' && l.statusEfetivo !== 'recebido' && (
@@ -193,35 +188,35 @@ export function LancamentosPage({
                   {podeGerenciar && (
                     <button
                       onClick={() => setEditando(l)}
-                      className="text-xs font-medium text-mat-700 hover:text-mat-900 mr-3"
+                      className="text-xs font-medium text-content-secondary hover:text-content-primary mr-3"
                     >
                       Editar
                     </button>
                   )}
                   {podeGerenciar && l.statusEfetivo !== 'cancelado' && l.valor_pago_centavos === 0 && (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setErro(null)
-                        const r = cancelarLancamento(l.id, usuarioNome)
+                        const r = await cancelarLancamento(l.id, usuarioNome)
                         if (!r.ok) setErro(r.erro ?? 'Não foi possível cancelar.')
                       }}
-                      className="text-xs font-medium text-mat-700/50 hover:text-brand-red"
+                      className="text-xs font-medium text-content-muted hover:text-danger"
                     >
                       Cancelar
                     </button>
                   )}
                   {podeGerenciar && l.valor_pago_centavos > 0 && (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setErro(null)
                         const ultimaMovimentacao = movimentacoes
                           .filter((m) => m.lancamento_id === l.id && !m.estornada)
                           .sort((a, b) => (a.criado_em < b.criado_em ? 1 : -1))[0]
                         if (!ultimaMovimentacao) return setErro('Nenhuma movimentação encontrada para estornar.')
-                        const r = estornarMovimentacao(ultimaMovimentacao.id, usuarioNome)
+                        const r = await estornarMovimentacao(ultimaMovimentacao.id, usuarioNome)
                         if (!r.ok) setErro(r.erro ?? 'Não foi possível estornar.')
                       }}
-                      className="text-xs font-medium text-mat-700/50 hover:text-brand-red"
+                      className="text-xs font-medium text-content-muted hover:text-danger"
                     >
                       Estornar último pagamento
                     </button>
@@ -229,16 +224,11 @@ export function LancamentosPage({
                 </td>
               </tr>
             ))}
-            {filtrados.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-mat-700/40 text-sm">
-                  Nenhum lançamento encontrado.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
-      </div>
+        )}
+        <Pagination {...paginacao} onMudarPagina={setPaginaAtual} />
+      </Card>
 
       {mostrarForm && (
         <LancamentoFormModal tipo={tipo} onClose={() => setMostrarForm(false)} onSalvo={() => setMostrarForm(false)} />

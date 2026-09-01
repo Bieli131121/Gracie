@@ -17,8 +17,8 @@ interface LancamentoInicial {
   numero_documento: string | null
 }
 
-const CAMPO = 'w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none bg-white'
-const LABEL = 'block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5'
+const CAMPO = 'w-full border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none bg-white'
+const LABEL = 'block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5'
 
 export function LancamentoFormModal({
   tipo,
@@ -52,7 +52,7 @@ export function LancamentoFormModal({
   const rotulo = tipo === 'receita' ? 'Receita' : 'Despesa'
   const rotuloPessoa = tipo === 'receita' ? 'Cliente' : 'Fornecedor'
 
-  function salvar() {
+  async function salvar() {
     if (lancamentoInicial) {
       const r = atualizarLancamento(lancamentoInicial.id, {
         descricao,
@@ -68,7 +68,7 @@ export function LancamentoFormModal({
       })
       if (!r.ok) return setErro(r.erro ?? 'Não foi possível salvar.')
     } else {
-      const r = criarLancamento({
+      const r = await criarLancamento({
         tipo,
         descricao,
         valor,
@@ -89,8 +89,8 @@ export function LancamentoFormModal({
 
   return (
     <div className="fixed inset-0 bg-mat-900/60 flex items-center justify-center px-4 z-50 overflow-y-auto py-8">
-      <div className="bg-white rounded-sm p-6 w-full max-w-lg">
-        <h2 className="font-display text-lg text-mat-900 mb-1">
+      <div className="bg-surface rounded p-6 w-full max-w-lg">
+        <h2 className="font-display text-lg text-content-primary mb-1">
           {lancamentoInicial ? `Editar ${rotulo.toLowerCase()}` : `Nova ${rotulo.toLowerCase()}`}
         </h2>
         {bloqueado && (
@@ -98,14 +98,14 @@ export function LancamentoFormModal({
             Este lançamento já possui pagamento registrado — o valor não pode mais ser alterado.
           </p>
         )}
-        {erro && <p className="text-xs text-brand-red mb-4 bg-brand-red/10 px-3 py-2 rounded-sm">{erro}</p>}
+        {erro && <p className="text-xs text-brand-red mb-4 bg-brand-red/10 px-3 py-2 rounded">{erro}</p>}
 
         <div className="mb-4">
           <label className={LABEL}>Descrição</label>
           <input value={descricao} onChange={(e) => setDescricao(e.target.value)} className={CAMPO} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className={LABEL}>Valor (R$)</label>
             <input
@@ -124,7 +124,7 @@ export function LancamentoFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className={LABEL}>Data de competência</label>
             <input type="date" value={dataCompetencia} onChange={(e) => setDataCompetencia(e.target.value)} className={CAMPO} />
@@ -135,7 +135,7 @@ export function LancamentoFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className={LABEL}>Categoria</label>
             <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={CAMPO}>
@@ -162,7 +162,7 @@ export function LancamentoFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className={LABEL}>Conta financeira prevista</label>
             <select value={contaId} onChange={(e) => setContaId(e.target.value)} className={CAMPO}>
@@ -207,14 +207,14 @@ export function LancamentoFormModal({
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 border border-mat-700/20 text-mat-700 text-sm font-medium py-2.5 rounded-sm hover:bg-gi-50 transition-colors"
+            className="flex-1 border border-border text-content-secondary text-sm font-medium py-2.5 rounded hover:bg-bg-subtle transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={salvar}
             disabled={!descricao.trim() || !(valor > 0)}
-            className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded-sm transition-colors disabled:opacity-50"
+            className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded transition-colors disabled:opacity-50"
           >
             Salvar
           </button>

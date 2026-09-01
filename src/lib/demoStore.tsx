@@ -1,5 +1,8 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { normalizarCpf } from './cpf'
+import { DEMO_MODE } from './auth'
+import { supabase } from './supabase'
+import { validarLocalizacao } from './localizacaoAcademia'
 import {
   Aluno,
   Mensalidade,
@@ -71,9 +74,10 @@ const PERMISSOES_INICIAIS: MatrizPermissoes = {
     'gerenciar_financeiro',
     'gerenciar_usuarios',
     'gerenciar_produtos',
+    'registrar_venda',
   ],
-  professor: ['ver_painel', 'gerenciar_alunos', 'fazer_checkin'],
-  financeiro: ['ver_painel', 'ver_financeiro', 'gerenciar_financeiro', 'gerenciar_produtos'],
+  professor: ['ver_painel', 'gerenciar_alunos', 'fazer_checkin', 'registrar_venda'],
+  financeiro: ['ver_painel', 'ver_financeiro', 'gerenciar_financeiro', 'gerenciar_produtos', 'registrar_venda'],
   aluno: [],
 }
 
@@ -221,6 +225,9 @@ function gerarPresencasHistoricas(alunoId: string, dataInicio: string, aulasPorS
         turma_id: null,
         data: dataAula.toISOString().slice(0, 10),
         hora: '19:00',
+        origem: 'staff',
+        foto_url: null,
+        distancia_metros: null,
       })
     }
 
@@ -243,14 +250,14 @@ ALUNOS_INICIAIS.forEach((a) => {
   a.data_nascimento = NASCIMENTOS[a.nome] ?? null
 })
 
-function mensalidadeDemo(alunoId: string, valor: number, diasVencimento: number, status: StatusMensalidade): Mensalidade {
+function mensalidadeDemo(alunoId: string, valorReais: number, diasVencimento: number, status: StatusMensalidade): Mensalidade {
   const d = new Date()
   d.setDate(d.getDate() + diasVencimento)
   return {
     id: uid(),
     aluno_id: alunoId,
     plano_id: null,
-    valor,
+    valor_centavos: paraCentavos(valorReais),
     vencimento: d.toISOString().slice(0, 10),
     pago_em: status === 'pago' ? new Date().toISOString().slice(0, 10) : null,
     status,
@@ -435,8 +442,8 @@ function produtoDemo(
   nome: string,
   categoria: string,
   fornecedorNome: string,
-  precoCusto: number,
-  precoVenda: number,
+  precoCustoReais: number,
+  precoVendaReais: number,
   estoqueAtual: number,
   estoqueMinimo: number
 ): Produto {
@@ -446,8 +453,8 @@ function produtoDemo(
     nome,
     categoria,
     fornecedorId: fornecedor?.id ?? null,
-    precoCusto,
-    precoVenda,
+    preco_custo_centavos: paraCentavos(precoCustoReais),
+    preco_venda_centavos: paraCentavos(precoVendaReais),
     estoqueAtual,
     estoqueMinimo,
     ativo: true,
@@ -669,7 +676,7 @@ interface DemoStoreValue {
     faixa: FaixaCor
     cpf: string
     senhaAcesso?: string
-  }) => void
+  }) => Promise<{ ok: boolean; erro?: string }>
   // ---------- Portal do aluno ----------
   buscarAlunoPorCpf: (cpf: string) => Aluno | undefined
   cadastrarSenhaAluno: (cpf: string, senha: string) => { ok: boolean; erro?: string }
@@ -687,16 +694,20 @@ interface DemoStoreValue {
       grau_atual: number
       observacoes: string
     }
-  ) => void
+  ) => Promise<{ ok: boolean; erro?: string }>
   marcarPresenca: (alunoId: string) => void
-  marcarPago: (mensalidadeId: string) => void
+  marcarPago: (mensalidadeId: string) => Promise<void>
   autenticar: (email: string, senha: string) => Usuario | null
-  adicionarUsuario: (dados: { nome: string; email: string; senha: string; role: UserRole }) => { ok: boolean; erro?: string }
-  alternarUsuarioAtivo: (usuarioId: string) => void
-  alternarPermissao: (role: UserRole, chave: PermissionKey) => void
+  adicionarUsuario: (dados: { nome: string; email: string; senha: string; role: UserRole }) => Promise<{ ok: boolean; erro?: string }>
+  alternarUsuarioAtivo: (usuarioId: string) => Promise<void>
+  alternarPermissao: (role: UserRole, chave: PermissionKey) => Promise<void>
   // ---------- Presença / graduação ----------
   presencasDoAluno: (alunoId: string) => Presenca[]
   registrarPresenca: (alunoId: string, data?: string) => { ok: boolean; erro?: string }
+  autoCheckinAluno: (
+    alunoId: string,
+    dados: { fotoDataUrl: string; latitude: number; longitude: number }
+  ) => Promise<{ ok: boolean; erro?: string; distancia?: number }>
   calcularElegibilidade: (alunoId: string) => Elegibilidade | null
   concederGrau: (alunoId: string) => void
   promoverFaixa: (alunoId: string) => void
@@ -727,23 +738,23 @@ interface DemoStoreValue {
     nome: string
     categoria: string
     fornecedorId: string | null
-    precoCusto: number
-    precoVenda: number
+    preco_custo_centavos: number
+    preco_venda_centavos: number
     estoqueAtual: number
     estoqueMinimo: number
-  }) => void
+  }) => { ok: boolean; erro?: string }
   atualizarProduto: (
     produtoId: string,
     dados: {
       nome: string
       categoria: string
       fornecedorId: string | null
-      precoCusto: number
-      precoVenda: number
+      preco_custo_centavos: number
+      preco_venda_centavos: number
       estoqueAtual: number
       estoqueMinimo: number
     }
-  ) => void
+  ) => { ok: boolean; erro?: string }
   alternarProdutoAtivo: (produtoId: string) => void
 
   // ---------- Módulo financeiro ----------
@@ -762,16 +773,16 @@ interface DemoStoreValue {
   recorrencias: RegraRecorrencia[]
   auditoria: RegistroAuditoria[]
 
-  criarContaFinanceira: (dados: { nome: string; tipo: TipoContaFinanceira; saldoInicial: number }) => { ok: boolean; erro?: string }
-  atualizarContaFinanceira: (id: string, dados: { nome: string; tipo: TipoContaFinanceira }) => void
-  alternarContaFinanceiraAtiva: (id: string) => void
-  ajustarSaldoConta: (id: string, valorReais: number, motivo: string, usuarioNome?: string) => { ok: boolean; erro?: string }
+  criarContaFinanceira: (dados: { nome: string; tipo: TipoContaFinanceira; saldoInicial: number }) => Promise<{ ok: boolean; erro?: string }>
+  atualizarContaFinanceira: (id: string, dados: { nome: string; tipo: TipoContaFinanceira }) => Promise<void>
+  alternarContaFinanceiraAtiva: (id: string) => Promise<void>
+  ajustarSaldoConta: (id: string, valorReais: number, motivo: string, usuarioNome?: string) => Promise<{ ok: boolean; erro?: string }>
 
-  criarCategoriaFinanceira: (dados: { nome: string; tipo: TipoLancamento; categoriaPaiId: string | null }) => { ok: boolean; erro?: string }
-  alternarCategoriaFinanceiraAtiva: (id: string) => void
+  criarCategoriaFinanceira: (dados: { nome: string; tipo: TipoLancamento; categoriaPaiId: string | null }) => Promise<{ ok: boolean; erro?: string }>
+  alternarCategoriaFinanceiraAtiva: (id: string) => Promise<void>
 
-  criarCentroCusto: (dados: { nome: string }) => { ok: boolean; erro?: string }
-  alternarCentroCustoAtivo: (id: string) => void
+  criarCentroCusto: (dados: { nome: string }) => Promise<{ ok: boolean; erro?: string }>
+  alternarCentroCustoAtivo: (id: string) => Promise<void>
 
   criarLancamento: (dados: {
     tipo: TipoLancamento
@@ -786,7 +797,7 @@ interface DemoStoreValue {
     forma_pagamento: string
     observacoes: string
     numero_documento: string
-  }) => { ok: boolean; erro?: string; id?: string }
+  }) => Promise<{ ok: boolean; erro?: string; id?: string }>
   atualizarLancamento: (
     id: string,
     dados: {
@@ -802,13 +813,18 @@ interface DemoStoreValue {
       numero_documento: string
     }
   ) => { ok: boolean; erro?: string }
-  cancelarLancamento: (id: string, usuarioNome?: string) => { ok: boolean; erro?: string }
+  cancelarLancamento: (id: string, usuarioNome?: string) => Promise<{ ok: boolean; erro?: string }>
   registrarPagamentoRecebimento: (
     lancamentoId: string,
     dados: { valor: number; data: string; contaFinanceiraId: string; formaPagamento: string },
     usuarioNome?: string
-  ) => { ok: boolean; erro?: string }
-  estornarMovimentacao: (movimentacaoId: string, usuarioNome?: string) => { ok: boolean; erro?: string }
+  ) => Promise<{ ok: boolean; erro?: string }>
+  estornarMovimentacao: (movimentacaoId: string, usuarioNome?: string) => Promise<{ ok: boolean; erro?: string }>
+  venderProdutos: (
+    itens: { produtoId: string; quantidade: number }[],
+    dados: { clienteNome: string; formaPagamento: string; contaFinanceiraId: string; data: string },
+    usuarioNome?: string
+  ) => Promise<{ ok: boolean; erro?: string; lancamentoId?: string; totalCentavos?: number }>
 
   criarRecorrencia: (dados: {
     tipo: TipoLancamento
@@ -826,7 +842,7 @@ interface DemoStoreValue {
   alternarRecorrenciaAtiva: (id: string) => void
   gerarLancamentosRecorrencia: (recorrenciaId: string, usuarioNome?: string) => { ok: boolean; gerados: number }
 
-  desfazerPagamentoMensalidade: (mensalidadeId: string, usuarioNome?: string) => { ok: boolean; erro?: string }
+  desfazerPagamentoMensalidade: (mensalidadeId: string, usuarioNome?: string) => Promise<{ ok: boolean; erro?: string }>
 
   saudeFinanceira: () => {
     semConta: number
@@ -863,6 +879,96 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
   const [ajustesSaldo, setAjustesSaldo] = useState<AjusteSaldoConta[]>([])
   const [recorrencias, setRecorrencias] = useState<RegraRecorrencia[]>(() => gerarRecorrenciasIniciais())
   const [auditoria, setAuditoria] = useState<RegistroAuditoria[]>([])
+
+  // ---------- Dados reais do Supabase (só fora do modo demo) ----------
+  // A tela de Venda é a primeira a operar contra o banco de verdade (via RPC
+  // registrar_venda_produtos), então precisa enxergar produtos/fornecedores/
+  // contas reais em vez dos dados de demonstração em memória.
+  async function recarregarAlunosReais() {
+    const { data } = await supabase.from('alunos').select('*')
+    if (data) {
+      setAlunos(
+        data.map((a) => ({
+          id: a.id,
+          perfil_id: a.perfil_id,
+          nome: a.nome,
+          cpf: a.cpf,
+          senha_acesso: null, // no modo real a senha vive no Supabase Auth, não nesta tabela
+          email: a.email,
+          telefone: a.telefone,
+          data_nascimento: a.data_nascimento,
+          data_matricula: a.data_matricula,
+          faixa_atual: a.faixa_atual,
+          grau_atual: a.grau_atual,
+          data_ultima_graduacao: a.data_ultima_graduacao,
+          ativo: a.ativo,
+          observacoes: a.observacoes,
+        }))
+      )
+    }
+  }
+
+  async function recarregarFinanceiroReal() {
+    const [contas, categorias, centros, lancs, movs, ajustes, mensal] = await Promise.all([
+      supabase.from('contas_financeiras').select('*'),
+      supabase.from('categorias_financeiras').select('*'),
+      supabase.from('centros_custo').select('*'),
+      supabase.from('lancamentos_financeiros').select('*'),
+      supabase.from('movimentacoes_financeiras').select('*'),
+      supabase.from('ajustes_saldo_conta').select('*'),
+      supabase.from('mensalidades').select('*'),
+    ])
+    if (contas.data) setContasFinanceirasBase(contas.data as ContaFinanceira[])
+    if (categorias.data) setCategoriasFinanceiras(categorias.data as CategoriaFinanceira[])
+    if (centros.data) setCentrosCusto(centros.data as CentroCusto[])
+    if (lancs.data) setLancamentosBase(lancs.data as LancamentoFinanceiro[])
+    if (movs.data) setMovimentacoes(movs.data as Movimentacao[])
+    if (ajustes.data) setAjustesSaldo(ajustes.data as AjusteSaldoConta[])
+    if (mensal.data) setMensalidadesBase(mensal.data as Mensalidade[])
+  }
+
+  useEffect(() => {
+    if (DEMO_MODE) return
+
+    recarregarAlunosReais()
+    recarregarFinanceiroReal()
+    recarregarUsuariosReais()
+    recarregarPermissoesReais()
+
+    supabase
+      .from('produtos')
+      .select('*')
+      .then(({ data }) => {
+        if (!data) return
+        setProdutosBase(
+          data.map((p) => ({
+            id: p.id,
+            nome: p.nome,
+            categoria: p.categoria,
+            fornecedorId: p.fornecedor_id,
+            preco_custo_centavos: p.preco_custo_centavos,
+            preco_venda_centavos: p.preco_venda_centavos,
+            estoqueAtual: p.estoque_atual,
+            estoqueMinimo: p.estoque_minimo,
+            ativo: p.ativo,
+          }))
+        )
+      })
+
+    supabase
+      .from('fornecedores')
+      .select('*')
+      .then(({ data }) => {
+        if (data) setFornecedores(data as Fornecedor[])
+      })
+
+    supabase
+      .from('contas_financeiras')
+      .select('*')
+      .then(({ data }) => {
+        if (data) setContasFinanceirasBase(data as ContaFinanceira[])
+      })
+  }, [])
 
   const historicoFinanceiro = gerarHistoricoFinanceiro(alunos, despesas)
 
@@ -920,16 +1026,34 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     setFornecedores((prev) => prev.map((f) => (f.id === fornecedorId ? { ...f, ativo: !f.ativo } : f)))
   }
 
+  function validarProduto(dados: {
+    nome: string
+    preco_custo_centavos: number
+    preco_venda_centavos: number
+    estoqueAtual: number
+    estoqueMinimo: number
+  }) {
+    if (!dados.nome.trim()) return 'Informe o nome do produto.'
+    if (dados.preco_venda_centavos <= 0) return 'O preço de venda deve ser maior que zero.'
+    if (dados.preco_custo_centavos < 0) return 'O preço de custo não pode ser negativo.'
+    if (dados.preco_venda_centavos < dados.preco_custo_centavos) return 'O preço de venda não pode ser menor que o custo.'
+    if (dados.estoqueAtual < 0 || dados.estoqueMinimo < 0) return 'Estoque não pode ser negativo.'
+    return null
+  }
+
   function adicionarProduto(dados: {
     nome: string
     categoria: string
     fornecedorId: string | null
-    precoCusto: number
-    precoVenda: number
+    preco_custo_centavos: number
+    preco_venda_centavos: number
     estoqueAtual: number
     estoqueMinimo: number
   }) {
+    const erro = validarProduto(dados)
+    if (erro) return { ok: false, erro }
     setProdutosBase((prev) => [...prev, { id: uid(), ativo: true, ...dados }])
+    return { ok: true }
   }
 
   function atualizarProduto(
@@ -938,13 +1062,16 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
       nome: string
       categoria: string
       fornecedorId: string | null
-      precoCusto: number
-      precoVenda: number
+      preco_custo_centavos: number
+      preco_venda_centavos: number
       estoqueAtual: number
       estoqueMinimo: number
     }
   ) {
+    const erro = validarProduto(dados)
+    if (erro) return { ok: false, erro }
     setProdutosBase((prev) => prev.map((p) => (p.id === produtoId ? { ...p, ...dados } : p)))
+    return { ok: true }
   }
 
   function alternarProdutoAtivo(produtoId: string) {
@@ -956,7 +1083,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     alunoNome: alunos.find((a) => a.id === m.aluno_id)?.nome ?? '—',
   }))
 
-  function adicionarAluno(dados: {
+  function adicionarAlunoDemo(dados: {
     nome: string
     telefone: string
     email: string
@@ -968,6 +1095,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     novo.email = dados.email || null
     novo.cpf = dados.cpf.trim()
     setAlunos((prev) => [...prev, novo])
+    return { ok: true as const }
   }
 
   // ---------- Portal do aluno (login por CPF) ----------
@@ -996,7 +1124,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     return aluno
   }
 
-  function atualizarAluno(
+  function atualizarAlunoDemo(
     alunoId: string,
     dados: {
       nome: string
@@ -1026,6 +1154,71 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
           : a
       )
     )
+    return { ok: true as const }
+  }
+
+  // Pontos de entrada públicos — decidem entre o motor demo (memória, síncrono
+  // por baixo de uma Promise resolvida na hora) e o Supabase real (assíncrono).
+  async function adicionarAluno(dados: {
+    nome: string
+    telefone: string
+    email: string
+    faixa: FaixaCor
+    cpf: string
+    senhaAcesso?: string
+  }) {
+    if (DEMO_MODE) return adicionarAlunoDemo(dados)
+
+    if (dados.senhaAcesso) {
+      return {
+        ok: false,
+        erro: 'Definir a senha do aluno pelo admin ainda não é suportado fora do modo demo — deixe em branco e peça pro aluno cadastrar a própria senha no primeiro acesso.',
+      }
+    }
+
+    const { error } = await supabase.from('alunos').insert({
+      nome: dados.nome,
+      cpf: normalizarCpf(dados.cpf),
+      telefone: dados.telefone || null,
+      email: dados.email || null,
+      faixa_atual: dados.faixa,
+    })
+    if (error) return { ok: false, erro: traduzirErroSupabase(error.message) }
+    await recarregarAlunosReais()
+    return { ok: true }
+  }
+
+  async function atualizarAluno(
+    alunoId: string,
+    dados: {
+      nome: string
+      cpf: string
+      telefone: string
+      email: string
+      data_nascimento: string
+      faixa_atual: FaixaCor
+      grau_atual: number
+      observacoes: string
+    }
+  ) {
+    if (DEMO_MODE) return atualizarAlunoDemo(alunoId, dados)
+
+    const { error } = await supabase
+      .from('alunos')
+      .update({
+        nome: dados.nome,
+        cpf: normalizarCpf(dados.cpf),
+        telefone: dados.telefone || null,
+        email: dados.email || null,
+        data_nascimento: dados.data_nascimento || null,
+        faixa_atual: dados.faixa_atual,
+        grau_atual: Math.min(Math.max(dados.grau_atual, 0), GRAU_MAXIMO_POR_FAIXA[dados.faixa_atual]),
+        observacoes: dados.observacoes || null,
+      })
+      .eq('id', alunoId)
+    if (error) return { ok: false, erro: traduzirErroSupabase(error.message) }
+    await recarregarAlunosReais()
+    return { ok: true }
   }
 
   function marcarPresenca(alunoId: string) {
@@ -1040,16 +1233,83 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
   }
 
   function registrarPresenca(alunoId: string, data?: string): { ok: boolean; erro?: string } {
-    const dataPresenca = data ?? new Date().toISOString().slice(0, 10)
+    const agora = new Date()
+    const dataPresenca = data ?? agora.toISOString().slice(0, 10)
     const jaTemNoDia = presencas.some((p) => p.aluno_id === alunoId && p.data === dataPresenca)
     if (jaTemNoDia) {
       return { ok: false, erro: 'Já existe presença registrada para este aluno nesta data.' }
     }
+    // Só usa o horário atual do relógio quando o check-in é para hoje — um check-in
+    // retroativo (data no passado) não tem "agora" que faça sentido, então mantém um
+    // horário padrão nesse caso.
+    const hora = dataPresenca === new Date().toISOString().slice(0, 10)
+      ? agora.toTimeString().slice(0, 5)
+      : '19:00'
     setPresencas((prev) => [
       ...prev,
-      { id: uidPresenca(), aluno_id: alunoId, turma_id: null, data: dataPresenca, hora: '19:00' },
+      { id: uidPresenca(), aluno_id: alunoId, turma_id: null, data: dataPresenca, hora, origem: 'staff', foto_url: null, distancia_metros: null },
     ])
     return { ok: true }
+  }
+
+  // ---------- Check-in do próprio aluno pelo portal (selfie + geolocalização) ----------
+  function autoCheckinAlunoDemo(
+    alunoId: string,
+    dados: { fotoDataUrl: string; latitude: number; longitude: number }
+  ): { ok: boolean; erro?: string; distancia?: number } {
+    const { valido, distancia } = validarLocalizacao(dados.latitude, dados.longitude)
+    if (!valido) {
+      return {
+        ok: false,
+        erro: `Você está a ${distancia}m da academia — muito longe pra confirmar presença. Chegue mais perto e tente de novo.`,
+        distancia,
+      }
+    }
+    const hoje = hojeISO()
+    const jaTemNoDia = presencas.some((p) => p.aluno_id === alunoId && p.data === hoje)
+    if (jaTemNoDia) return { ok: false, erro: 'Você já registrou presença hoje.' }
+
+    setPresencas((prev) => [
+      ...prev,
+      {
+        id: uidPresenca(),
+        aluno_id: alunoId,
+        turma_id: null,
+        data: hoje,
+        hora: new Date().toTimeString().slice(0, 5),
+        origem: 'auto',
+        foto_url: dados.fotoDataUrl, // modo demo: guarda a foto direto em memória (não persiste ao recarregar)
+        distancia_metros: distancia,
+      },
+    ])
+    return { ok: true, distancia }
+  }
+
+  async function autoCheckinAluno(
+    alunoId: string,
+    dados: { fotoDataUrl: string; latitude: number; longitude: number }
+  ): Promise<{ ok: boolean; erro?: string; distancia?: number }> {
+    if (DEMO_MODE) return autoCheckinAlunoDemo(alunoId, dados)
+
+    // Sobe a selfie pro Storage do Supabase antes de chamar a função que valida
+    // a distância e grava a presença — o bucket é privado (só o próprio aluno e
+    // a equipe enxergam a foto).
+    const caminho = `${alunoId}/${Date.now()}.jpg`
+    const blob = await (await fetch(dados.fotoDataUrl)).blob()
+    const upload = await supabase.storage.from('checkin-selfies').upload(caminho, blob, { contentType: 'image/jpeg' })
+    if (upload.error) return { ok: false, erro: 'Não foi possível enviar a foto. Verifique sua conexão e tente de novo.' }
+
+    const { data, error } = await supabase.rpc('registrar_checkin_aluno', {
+      p_foto_url: upload.data.path,
+      p_latitude: dados.latitude,
+      p_longitude: dados.longitude,
+    })
+    if (error) {
+      await supabase.storage.from('checkin-selfies').remove([caminho]) // limpa a foto órfã se a validação falhar
+      return { ok: false, erro: traduzirErroSupabase(error.message) }
+    }
+    const linha = Array.isArray(data) ? data[0] : data
+    return { ok: true, distancia: linha?.distancia_metros }
   }
 
   function calcularElegibilidade(alunoId: string): Elegibilidade | null {
@@ -1156,7 +1416,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     contaNome: contasFinanceirasBase.find((c) => c.id === l.conta_financeira_id)?.nome ?? '—',
   }))
 
-  function criarContaFinanceira(dados: { nome: string; tipo: TipoContaFinanceira; saldoInicial: number }) {
+  function criarContaFinanceiraDemo(dados: { nome: string; tipo: TipoContaFinanceira; saldoInicial: number }) {
     if (!dados.nome.trim()) return { ok: false, erro: 'Informe o nome da conta.' }
     const duplicada = contasFinanceirasBase.some((c) => c.nome.trim().toLowerCase() === dados.nome.trim().toLowerCase())
     if (duplicada) return { ok: false, erro: 'Já existe uma conta financeira com esse nome.' }
@@ -1173,59 +1433,128 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     return { ok: true }
   }
 
-  function atualizarContaFinanceira(id: string, dados: { nome: string; tipo: TipoContaFinanceira }) {
-    setContasFinanceirasBase((prev) => prev.map((c) => (c.id === id ? { ...c, nome: dados.nome, tipo: dados.tipo } : c)))
-    registrarAuditoria('alteracao', 'conta_financeira', id, `Conta financeira editada`)
+  async function criarContaFinanceira(dados: { nome: string; tipo: TipoContaFinanceira; saldoInicial: number }) {
+    if (DEMO_MODE) return criarContaFinanceiraDemo(dados)
+    if (!dados.nome.trim()) return { ok: false, erro: 'Informe o nome da conta.' }
+    const { error } = await supabase.from('contas_financeiras').insert({
+      nome: dados.nome.trim(),
+      tipo: dados.tipo,
+      saldo_inicial_centavos: paraCentavos(dados.saldoInicial),
+    })
+    if (error) return { ok: false, erro: traduzirErroSupabase(error.message) }
+    await recarregarFinanceiroReal()
+    return { ok: true }
   }
 
-  function alternarContaFinanceiraAtiva(id: string) {
-    setContasFinanceirasBase((prev) => prev.map((c) => (c.id === id ? { ...c, ativa: !c.ativa } : c)))
+  async function atualizarContaFinanceira(id: string, dados: { nome: string; tipo: TipoContaFinanceira }) {
+    if (DEMO_MODE) {
+      setContasFinanceirasBase((prev) => prev.map((c) => (c.id === id ? { ...c, nome: dados.nome, tipo: dados.tipo } : c)))
+      registrarAuditoria('alteracao', 'conta_financeira', id, `Conta financeira editada`)
+      return
+    }
+    await supabase.from('contas_financeiras').update({ nome: dados.nome, tipo: dados.tipo }).eq('id', id)
+    await recarregarFinanceiroReal()
   }
 
-  function ajustarSaldoConta(id: string, valorReais: number, motivo: string, usuarioNome = 'Usuário') {
+  async function alternarContaFinanceiraAtiva(id: string) {
+    if (DEMO_MODE) {
+      setContasFinanceirasBase((prev) => prev.map((c) => (c.id === id ? { ...c, ativa: !c.ativa } : c)))
+      return
+    }
+    const atual = contasFinanceirasBase.find((c) => c.id === id)
+    if (!atual) return
+    await supabase.from('contas_financeiras').update({ ativa: !atual.ativa }).eq('id', id)
+    await recarregarFinanceiroReal()
+  }
+
+  async function ajustarSaldoConta(id: string, valorReais: number, motivo: string, usuarioNome = 'Usuário') {
     if (!motivo.trim()) return { ok: false, erro: 'Informe o motivo do ajuste (obrigatório para auditoria).' }
     const valorCentavos = paraCentavos(valorReais)
     if (valorCentavos === 0) return { ok: false, erro: 'Informe um valor de ajuste diferente de zero.' }
-    const ajuste: AjusteSaldoConta = {
-      id: uidFin('ajuste'),
-      conta_financeira_id: id,
-      valor_centavos: valorCentavos,
-      motivo: motivo.trim(),
-      data: hojeISO(),
-      criado_em: agoraISO(),
+
+    if (DEMO_MODE) {
+      const ajuste: AjusteSaldoConta = {
+        id: uidFin('ajuste'),
+        conta_financeira_id: id,
+        valor_centavos: valorCentavos,
+        motivo: motivo.trim(),
+        data: hojeISO(),
+        criado_em: agoraISO(),
+      }
+      setAjustesSaldo((prev) => [...prev, ajuste])
+      registrarAuditoria('ajuste_saldo', 'conta_financeira', id, `Ajuste de saldo (${motivo.trim()})`, usuarioNome)
+      return { ok: true }
     }
-    setAjustesSaldo((prev) => [...prev, ajuste])
-    registrarAuditoria('ajuste_saldo', 'conta_financeira', id, `Ajuste de saldo (${motivo.trim()})`, usuarioNome)
+
+    const { error } = await supabase
+      .from('ajustes_saldo_conta')
+      .insert({ conta_financeira_id: id, valor_centavos: valorCentavos, motivo: motivo.trim() })
+    if (error) return { ok: false, erro: traduzirErroSupabase(error.message) }
+    await recarregarFinanceiroReal()
     return { ok: true }
   }
 
-  function criarCategoriaFinanceira(dados: { nome: string; tipo: TipoLancamento; categoriaPaiId: string | null }) {
+  async function criarCategoriaFinanceira(dados: { nome: string; tipo: TipoLancamento; categoriaPaiId: string | null }) {
     if (!dados.nome.trim()) return { ok: false, erro: 'Informe o nome da categoria.' }
-    const duplicada = categoriasFinanceiras.some(
-      (c) => c.tipo === dados.tipo && c.nome.trim().toLowerCase() === dados.nome.trim().toLowerCase()
-    )
-    if (duplicada) return { ok: false, erro: 'Já existe uma categoria com esse nome para este tipo.' }
-    setCategoriasFinanceiras((prev) => [
-      ...prev,
-      { id: uidFin('cat'), nome: dados.nome.trim(), tipo: dados.tipo, categoria_pai_id: dados.categoriaPaiId, ativa: true },
-    ])
+    if (DEMO_MODE) {
+      const duplicada = categoriasFinanceiras.some(
+        (c) => c.tipo === dados.tipo && c.nome.trim().toLowerCase() === dados.nome.trim().toLowerCase()
+      )
+      if (duplicada) return { ok: false, erro: 'Já existe uma categoria com esse nome para este tipo.' }
+      setCategoriasFinanceiras((prev) => [
+        ...prev,
+        { id: uidFin('cat'), nome: dados.nome.trim(), tipo: dados.tipo, categoria_pai_id: dados.categoriaPaiId, ativa: true },
+      ])
+      return { ok: true }
+    }
+    const { error } = await supabase
+      .from('categorias_financeiras')
+      .insert({ nome: dados.nome.trim(), tipo: dados.tipo, categoria_pai_id: dados.categoriaPaiId })
+    if (error) {
+      const duplicado = error.message.includes('duplicate') || error.message.includes('unique')
+      return { ok: false, erro: duplicado ? 'Já existe uma categoria com esse nome para este tipo.' : traduzirErroSupabase(error.message) }
+    }
+    await recarregarFinanceiroReal()
     return { ok: true }
   }
 
-  function alternarCategoriaFinanceiraAtiva(id: string) {
-    setCategoriasFinanceiras((prev) => prev.map((c) => (c.id === id ? { ...c, ativa: !c.ativa } : c)))
+  async function alternarCategoriaFinanceiraAtiva(id: string) {
+    if (DEMO_MODE) {
+      setCategoriasFinanceiras((prev) => prev.map((c) => (c.id === id ? { ...c, ativa: !c.ativa } : c)))
+      return
+    }
+    const atual = categoriasFinanceiras.find((c) => c.id === id)
+    if (!atual) return
+    await supabase.from('categorias_financeiras').update({ ativa: !atual.ativa }).eq('id', id)
+    await recarregarFinanceiroReal()
   }
 
-  function criarCentroCusto(dados: { nome: string }) {
+  async function criarCentroCusto(dados: { nome: string }) {
     if (!dados.nome.trim()) return { ok: false, erro: 'Informe o nome do centro de custo.' }
-    const duplicado = centrosCusto.some((c) => c.nome.trim().toLowerCase() === dados.nome.trim().toLowerCase())
-    if (duplicado) return { ok: false, erro: 'Já existe um centro de custo com esse nome.' }
-    setCentrosCusto((prev) => [...prev, { id: uidFin('cc'), nome: dados.nome.trim(), ativo: true }])
+    if (DEMO_MODE) {
+      const duplicado = centrosCusto.some((c) => c.nome.trim().toLowerCase() === dados.nome.trim().toLowerCase())
+      if (duplicado) return { ok: false, erro: 'Já existe um centro de custo com esse nome.' }
+      setCentrosCusto((prev) => [...prev, { id: uidFin('cc'), nome: dados.nome.trim(), ativo: true }])
+      return { ok: true }
+    }
+    const { error } = await supabase.from('centros_custo').insert({ nome: dados.nome.trim() })
+    if (error) {
+      const duplicado = error.message.includes('duplicate') || error.message.includes('unique')
+      return { ok: false, erro: duplicado ? 'Já existe um centro de custo com esse nome.' : traduzirErroSupabase(error.message) }
+    }
+    await recarregarFinanceiroReal()
     return { ok: true }
   }
 
-  function alternarCentroCustoAtivo(id: string) {
-    setCentrosCusto((prev) => prev.map((c) => (c.id === id ? { ...c, ativo: !c.ativo } : c)))
+  async function alternarCentroCustoAtivo(id: string) {
+    if (DEMO_MODE) {
+      setCentrosCusto((prev) => prev.map((c) => (c.id === id ? { ...c, ativo: !c.ativo } : c)))
+      return
+    }
+    const atual = centrosCusto.find((c) => c.id === id)
+    if (!atual) return
+    await supabase.from('centros_custo').update({ ativo: !atual.ativo }).eq('id', id)
+    await recarregarFinanceiroReal()
   }
 
   // Verifica se já existe um lançamento muito parecido (mesma descrição, valor, vencimento e tipo),
@@ -1248,7 +1577,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  function criarLancamento(dados: {
+  function criarLancamentoDemo(dados: {
     tipo: TipoLancamento
     descricao: string
     valor: number
@@ -1304,6 +1633,54 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, id: novo.id }
   }
 
+  async function criarLancamento(dados: {
+    tipo: TipoLancamento
+    descricao: string
+    valor: number
+    data_competencia: string
+    data_vencimento: string
+    categoria_id: string | null
+    centro_custo_id: string | null
+    conta_financeira_id: string | null
+    cliente_fornecedor: string
+    forma_pagamento: string
+    observacoes: string
+    numero_documento: string
+  }) {
+    if (DEMO_MODE) return criarLancamentoDemo(dados)
+    if (!dados.descricao.trim()) return { ok: false, erro: 'Informe a descrição.' }
+    if (!(dados.valor > 0)) return { ok: false, erro: 'O valor deve ser maior que zero.' }
+    if (!dados.data_vencimento) return { ok: false, erro: 'Informe a data de vencimento.' }
+    if (!dados.categoria_id) return { ok: false, erro: 'Selecione uma categoria.' }
+    const { error } = await supabase.from('lancamentos_financeiros').insert({
+      tipo: dados.tipo,
+      descricao: dados.descricao.trim(),
+      valor_centavos: paraCentavos(dados.valor),
+      data_competencia: dados.data_competencia || dados.data_vencimento,
+      data_vencimento: dados.data_vencimento,
+      categoria_id: dados.categoria_id,
+      centro_custo_id: dados.centro_custo_id,
+      conta_financeira_id: dados.conta_financeira_id,
+      cliente_fornecedor: dados.cliente_fornecedor.trim() || null,
+      forma_pagamento: dados.forma_pagamento.trim() || null,
+      observacoes: dados.observacoes.trim() || null,
+      numero_documento: dados.numero_documento.trim() || null,
+    })
+    if (error) {
+      // A constraint idx_lancamentos_sem_duplicidade do banco cobre a mesma checagem
+      // de duplicidade que o modo demo faz em JS — só traduzimos a mensagem.
+      const duplicado = error.message.includes('idx_lancamentos_sem_duplicidade')
+      return {
+        ok: false,
+        erro: duplicado
+          ? 'Já existe um lançamento com a mesma descrição, valor e vencimento. Verifique se não é duplicado.'
+          : traduzirErroSupabase(error.message),
+      }
+    }
+    await recarregarFinanceiroReal()
+    return { ok: true }
+  }
+
   function atualizarLancamento(
     id: string,
     dados: {
@@ -1353,7 +1730,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     return { ok: true }
   }
 
-  function cancelarLancamento(id: string, usuarioNome = 'Usuário') {
+  function cancelarLancamentoDemo(id: string, usuarioNome = 'Usuário') {
     const atual = lancamentosBase.find((l) => l.id === id)
     if (!atual) return { ok: false, erro: 'Lançamento não encontrado.' }
     if (atual.status === 'cancelado') return { ok: false, erro: 'Este lançamento já está cancelado.' }
@@ -1370,7 +1747,15 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     return { ok: true }
   }
 
-  function registrarPagamentoRecebimento(
+  async function cancelarLancamento(id: string, usuarioNome = 'Usuário') {
+    if (DEMO_MODE) return cancelarLancamentoDemo(id, usuarioNome)
+    const { error } = await supabase.rpc('cancelar_lancamento', { p_lancamento_id: id })
+    if (error) return { ok: false, erro: traduzirErroSupabase(error.message) }
+    await recarregarFinanceiroReal()
+    return { ok: true }
+  }
+
+  function registrarPagamentoRecebimentoDemo(
     lancamentoId: string,
     dados: { valor: number; data: string; contaFinanceiraId: string; formaPagamento: string },
     usuarioNome = 'Usuário'
@@ -1449,7 +1834,25 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     return { ok: true }
   }
 
-  function estornarMovimentacao(movimentacaoId: string, usuarioNome = 'Usuário') {
+  async function registrarPagamentoRecebimento(
+    lancamentoId: string,
+    dados: { valor: number; data: string; contaFinanceiraId: string; formaPagamento: string },
+    usuarioNome = 'Usuário'
+  ) {
+    if (DEMO_MODE) return registrarPagamentoRecebimentoDemo(lancamentoId, dados, usuarioNome)
+    const { error } = await supabase.rpc('registrar_pagamento_lancamento', {
+      p_lancamento_id: lancamentoId,
+      p_valor_centavos: paraCentavos(dados.valor),
+      p_data: dados.data,
+      p_conta_financeira_id: dados.contaFinanceiraId,
+      p_forma_pagamento: dados.formaPagamento,
+    })
+    if (error) return { ok: false, erro: traduzirErroSupabase(error.message) }
+    await recarregarFinanceiroReal()
+    return { ok: true }
+  }
+
+  function estornarMovimentacaoDemo(movimentacaoId: string, usuarioNome = 'Usuário') {
     const mov = movimentacoes.find((m) => m.id === movimentacaoId)
     if (!mov) return { ok: false, erro: 'Movimentação não encontrada.' }
     if (mov.estornada) return { ok: false, erro: 'Esta movimentação já foi estornada.' }
@@ -1485,6 +1888,132 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
 
     registrarAuditoria('estorno', 'movimentacao', mov.id, `Estorno de ${mov.tipo} — ${mov.descricao}`, usuarioNome)
     return { ok: true }
+  }
+
+  async function estornarMovimentacao(movimentacaoId: string, usuarioNome = 'Usuário') {
+    if (DEMO_MODE) return estornarMovimentacaoDemo(movimentacaoId, usuarioNome)
+    const { error } = await supabase.rpc('estornar_movimentacao', { p_movimentacao_id: movimentacaoId })
+    if (error) return { ok: false, erro: traduzirErroSupabase(error.message) }
+    await recarregarFinanceiroReal()
+    return { ok: true }
+  }
+
+  // ---------- Venda de produtos (PDV) ----------
+  // Baixa o estoque de cada item e já registra a receita quitada de uma vez —
+  // diferente de criarLancamento (que só cria pendente), aqui o dinheiro já
+  // entrou na hora, então lançamento e movimentação nascem juntos e pagos.
+  // As funções SQL do Supabase (registrar_venda_produtos etc) já lançam mensagens
+  // de erro em português prontas pra mostrar ao usuário — só um fallback genérico
+  // pro caso de erro de rede/infra que não veio de uma "raise exception" nossa.
+  function traduzirErroSupabase(mensagem: string) {
+    return mensagem || 'Não foi possível concluir a operação.'
+  }
+
+  function venderProdutosDemo(
+    itens: { produtoId: string; quantidade: number }[],
+    dados: { clienteNome: string; formaPagamento: string; contaFinanceiraId: string; data: string },
+    usuarioNome = 'Usuário'
+  ) {
+    if (itens.length === 0) return { ok: false, erro: 'Adicione ao menos um produto à venda.' }
+
+    for (const item of itens) {
+      const produto = produtosBase.find((p) => p.id === item.produtoId)
+      if (!produto || !produto.ativo) return { ok: false, erro: 'Um dos produtos selecionados não está mais disponível.' }
+      if (item.quantidade <= 0) return { ok: false, erro: 'Quantidade inválida.' }
+      if (item.quantidade > produto.estoqueAtual) {
+        return { ok: false, erro: `Estoque insuficiente de "${produto.nome}" (disponível: ${produto.estoqueAtual}).` }
+      }
+    }
+
+    const conta = contasFinanceirasBase.find((c) => c.id === dados.contaFinanceiraId)
+    if (!conta || !conta.ativa) return { ok: false, erro: 'Selecione uma conta financeira ativa válida.' }
+    if (!dados.data) return { ok: false, erro: 'Informe a data da venda.' }
+
+    const categoriaLoja = categoriasFinanceiras.find((c) => c.tipo === 'receita' && c.nome === 'Produtos/Loja')
+
+    const totalCentavos = itens.reduce((soma, item) => {
+      const produto = produtosBase.find((p) => p.id === item.produtoId)!
+      return soma + produto.preco_venda_centavos * item.quantidade
+    }, 0)
+
+    const descricaoItens = itens
+      .map((item) => {
+        const produto = produtosBase.find((p) => p.id === item.produtoId)!
+        return `${item.quantidade}x ${produto.nome}`
+      })
+      .join(', ')
+
+    // Baixa o estoque
+    setProdutosBase((prev) =>
+      prev.map((p) => {
+        const item = itens.find((i) => i.produtoId === p.id)
+        return item ? { ...p, estoqueAtual: p.estoqueAtual - item.quantidade } : p
+      })
+    )
+
+    // Cria o lançamento já quitado
+    const lancamentoId = uidFin('lanc')
+    const novoLancamento: LancamentoFinanceiro = {
+      id: lancamentoId,
+      tipo: 'receita',
+      descricao: `Venda: ${descricaoItens}`,
+      valor_centavos: totalCentavos,
+      valor_pago_centavos: totalCentavos,
+      data_competencia: dados.data,
+      data_vencimento: dados.data,
+      data_pagamento: dados.data,
+      categoria_id: categoriaLoja?.id ?? null,
+      centro_custo_id: null,
+      conta_financeira_id: dados.contaFinanceiraId,
+      cliente_fornecedor: dados.clienteNome.trim() || null,
+      forma_pagamento: dados.formaPagamento,
+      observacoes: null,
+      numero_documento: null,
+      status: 'recebido',
+      recorrencia_id: null,
+      cancelado_em: null,
+      criado_em: agoraISO(),
+    }
+    setLancamentosBase((prev) => [novoLancamento, ...prev])
+
+    const movimentacao: Movimentacao = {
+      id: uidFin('mov'),
+      lancamento_id: lancamentoId,
+      conta_financeira_id: dados.contaFinanceiraId,
+      tipo: 'entrada',
+      valor_centavos: totalCentavos,
+      data: dados.data,
+      descricao: novoLancamento.descricao,
+      estornada: false,
+      estornada_em: null,
+      criado_em: agoraISO(),
+    }
+    setMovimentacoes((prev) => [movimentacao, ...prev])
+
+    registrarAuditoria('criacao', 'lancamento', lancamentoId, `Venda registrada: ${descricaoItens}`, usuarioNome)
+
+    return { ok: true, lancamentoId, totalCentavos }
+  }
+
+  // Ponto de entrada público chamado pela tela de Venda — decide entre o motor
+  // demo (em memória, síncrono) e o Supabase real (assíncrono, via RPC
+  // registrar_venda_produtos que já existe pronta no schema.sql).
+  async function venderProdutos(
+    itens: { produtoId: string; quantidade: number }[],
+    dados: { clienteNome: string; formaPagamento: string; contaFinanceiraId: string; data: string },
+    usuarioNome = 'Usuário'
+  ) {
+    if (DEMO_MODE) return venderProdutosDemo(itens, dados, usuarioNome)
+
+    const { data: lancamentoId, error } = await supabase.rpc('registrar_venda_produtos', {
+      p_itens: itens.map((i) => ({ produto_id: i.produtoId, quantidade: i.quantidade })),
+      p_cliente_nome: dados.clienteNome,
+      p_forma_pagamento: dados.formaPagamento,
+      p_conta_financeira_id: dados.contaFinanceiraId,
+      p_data: dados.data,
+    })
+    if (error) return { ok: false, erro: traduzirErroSupabase(error.message) }
+    return { ok: true, lancamentoId: lancamentoId as string }
   }
 
   function criarRecorrencia(dados: {
@@ -1605,14 +2134,14 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, gerados: novosLancamentos.length }
   }
 
-  function desfazerPagamentoMensalidade(mensalidadeId: string, usuarioNome = 'Usuário') {
+  function desfazerPagamentoMensalidadeDemo(mensalidadeId: string, usuarioNome = 'Usuário') {
     const mensalidade = mensalidadesBase.find((m) => m.id === mensalidadeId)
     if (!mensalidade) return { ok: false, erro: 'Mensalidade não encontrada.' }
     const movimentacao = movimentacoes.find(
       (m) => m.lancamento_id === `mensalidade:${mensalidadeId}` && !m.estornada
     )
     if (movimentacao) {
-      estornarMovimentacao(movimentacao.id, usuarioNome)
+      estornarMovimentacaoDemo(movimentacao.id, usuarioNome)
     }
     const hoje = hojeISO()
     setMensalidadesBase((prev) =>
@@ -1623,6 +2152,14 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
       )
     )
     registrarAuditoria('estorno', 'mensalidade', mensalidadeId, `Pagamento de mensalidade desfeito`, usuarioNome)
+    return { ok: true }
+  }
+
+  async function desfazerPagamentoMensalidade(mensalidadeId: string, usuarioNome = 'Usuário') {
+    if (DEMO_MODE) return desfazerPagamentoMensalidadeDemo(mensalidadeId, usuarioNome)
+    const { error } = await supabase.rpc('desfazer_pagamento_mensalidade', { p_mensalidade_id: mensalidadeId })
+    if (error) return { ok: false, erro: traduzirErroSupabase(error.message) }
+    await recarregarFinanceiroReal()
     return { ok: true }
   }
 
@@ -1650,7 +2187,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     return { semConta, semCategoria, possiveisDuplicados, contasComSaldoNegativo }
   }
 
-  function marcarPago(mensalidadeId: string) {
+  function marcarPagoDemo(mensalidadeId: string) {
     const mensalidade = mensalidadesBase.find((m) => m.id === mensalidadeId)
     setMensalidadesBase((prev) =>
       prev.map((m) =>
@@ -1669,7 +2206,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
             lancamento_id: `mensalidade:${mensalidadeId}`,
             conta_financeira_id: contaPadrao.id,
             tipo: 'entrada',
-            valor_centavos: paraCentavos(Number(mensalidade.valor)),
+            valor_centavos: mensalidade.valor_centavos,
             data: hojeISO(),
             descricao: `Mensalidade — ${alunoNome}`,
             estornada: false,
@@ -1683,6 +2220,18 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function marcarPago(mensalidadeId: string) {
+    if (DEMO_MODE) return marcarPagoDemo(mensalidadeId)
+    const { error } = await supabase.rpc('marcar_mensalidade_paga', { p_mensalidade_id: mensalidadeId })
+    if (error) {
+      // Mantém silencioso na UI de lista (igual ao comportamento demo, que não retornava erro aqui) —
+      // mas registra no console pra não mascarar problema de configuração/permissão.
+      console.error(traduzirErroSupabase(error.message))
+      return
+    }
+    await recarregarFinanceiroReal()
+  }
+
   function autenticar(email: string, senha: string): Usuario | null {
     const usuario = usuarios.find(
       (u) => u.ativo && u.email.trim().toLowerCase() === email.trim().toLowerCase() && u.senha === senha
@@ -1690,29 +2239,71 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     return usuario ?? null
   }
 
-  function adicionarUsuario(dados: { nome: string; email: string; senha: string; role: UserRole }) {
-    const emailExiste = usuarios.some((u) => u.email.trim().toLowerCase() === dados.email.trim().toLowerCase())
-    if (emailExiste) return { ok: false, erro: 'Já existe um usuário com esse e-mail.' }
-    if (!dados.nome.trim() || !dados.email.trim() || dados.senha.length < 6) {
-      return { ok: false, erro: 'Preencha nome, e-mail e uma senha com pelo menos 6 caracteres.' }
-    }
-    setUsuarios((prev) => [...prev, { id: uid(), ativo: true, ...dados }])
-    return { ok: true }
-  }
-
-  function alternarUsuarioAtivo(usuarioId: string) {
-    setUsuarios((prev) => prev.map((u) => (u.id === usuarioId ? { ...u, ativo: !u.ativo } : u)))
-  }
-
-  function alternarPermissao(role: UserRole, chave: PermissionKey) {
-    setPermissoes((prev) => {
-      const atual = prev[role]
-      const tem = atual.includes(chave)
-      return {
-        ...prev,
-        [role]: tem ? atual.filter((c) => c !== chave) : [...atual, chave],
+  async function adicionarUsuario(dados: { nome: string; email: string; senha: string; role: UserRole }) {
+    if (DEMO_MODE) {
+      const emailExiste = usuarios.some((u) => u.email.trim().toLowerCase() === dados.email.trim().toLowerCase())
+      if (emailExiste) return { ok: false, erro: 'Já existe um usuário com esse e-mail.' }
+      if (!dados.nome.trim() || !dados.email.trim() || dados.senha.length < 6) {
+        return { ok: false, erro: 'Preencha nome, e-mail e uma senha com pelo menos 6 caracteres.' }
       }
-    })
+      setUsuarios((prev) => [...prev, { id: uid(), ativo: true, ...dados }])
+      return { ok: true }
+    }
+    // Criar login da equipe cria uma conta no Supabase Auth, o que exige a
+    // Admin API com chave de serviço — não pode rodar com segurança no
+    // navegador. Fora do modo demo, isso precisa ser feito direto no painel
+    // do Supabase (ou por uma Edge Function dedicada, ainda não implementada).
+    return {
+      ok: false,
+      erro: 'Criar novo login da equipe ainda não é suportado fora do modo demo — crie o usuário direto no painel do Supabase (Authentication → Users) e depois defina o papel dele na tabela "perfis".',
+    }
+  }
+
+  async function recarregarUsuariosReais() {
+    const { data } = await supabase.from('perfis').select('*').neq('role', 'aluno')
+    if (data) {
+      setUsuarios(data.map((p) => ({ id: p.id, nome: p.nome, email: '', senha: '', role: p.role, ativo: p.ativo })))
+    }
+  }
+
+  async function recarregarPermissoesReais() {
+    const { data } = await supabase.from('permissoes_papel').select('*')
+    if (data) {
+      const matriz: MatrizPermissoes = { admin: [], professor: [], financeiro: [], aluno: [] }
+      data.forEach((row) => {
+        matriz[row.role as UserRole] = [...(matriz[row.role as UserRole] ?? []), row.permissao as PermissionKey]
+      })
+      setPermissoes(matriz)
+    }
+  }
+
+  async function alternarUsuarioAtivo(usuarioId: string) {
+    if (DEMO_MODE) {
+      setUsuarios((prev) => prev.map((u) => (u.id === usuarioId ? { ...u, ativo: !u.ativo } : u)))
+      return
+    }
+    const atual = usuarios.find((u) => u.id === usuarioId)
+    if (!atual) return
+    await supabase.from('perfis').update({ ativo: !atual.ativo }).eq('id', usuarioId)
+    await recarregarUsuariosReais()
+  }
+
+  async function alternarPermissao(role: UserRole, chave: PermissionKey) {
+    if (DEMO_MODE) {
+      setPermissoes((prev) => {
+        const atual = prev[role]
+        const tem = atual.includes(chave)
+        return { ...prev, [role]: tem ? atual.filter((c) => c !== chave) : [...atual, chave] }
+      })
+      return
+    }
+    const temAtualmente = permissoes[role]?.includes(chave)
+    if (temAtualmente) {
+      await supabase.from('permissoes_papel').delete().eq('role', role).eq('permissao', chave)
+    } else {
+      await supabase.from('permissoes_papel').insert({ role, permissao: chave })
+    }
+    await recarregarPermissoesReais()
   }
 
   return (
@@ -1737,6 +2328,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
         alternarPermissao,
         presencasDoAluno,
         registrarPresenca,
+        autoCheckinAluno,
         calcularElegibilidade,
         concederGrau,
         promoverFaixa,
@@ -1774,6 +2366,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
         cancelarLancamento,
         registrarPagamentoRecebimento,
         estornarMovimentacao,
+        venderProdutos,
         criarRecorrencia,
         alternarRecorrenciaAtiva,
         gerarLancamentosRecorrencia,

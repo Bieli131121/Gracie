@@ -33,7 +33,7 @@ export function Faixa({ cor, grau = 0, tamanho = 'md', mostrarLabel = false }: F
   return (
     <div className="inline-flex items-center gap-2">
       <div
-        className="relative flex items-center rounded-sm overflow-hidden"
+        className="relative flex items-center rounded overflow-hidden"
         style={{
           width: dims.w,
           height: dims.h,

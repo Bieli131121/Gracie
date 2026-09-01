@@ -1,7 +1,11 @@
 import { useState } from 'react'
+import { PackageX, Truck } from 'lucide-react'
 import { useDemoStore } from '../lib/demoStore'
 import { useAuth } from '../lib/auth'
 import { SemAcesso } from '../components/SemAcesso'
+import { EmptyState, Pagination } from '../components/ui'
+import { usePaginacao } from '../lib/usePaginacao'
+import { formatarCentavos, paraCentavos } from '../lib/money'
 
 type Aba = 'produtos' | 'fornecedores'
 
@@ -16,8 +20,8 @@ export function Produtos() {
   return (
     <div className="p-4 md:p-8">
       <div className="mb-6">
-        <h1 className="font-display text-2xl text-mat-900 mb-1">Produtos e fornecedores</h1>
-        <p className="text-sm text-mat-700/60">Loja da academia — kimonos, faixas, suplementos e equipamentos</p>
+        <h1 className="font-display text-2xl text-content-primary mb-1">Produtos e fornecedores</h1>
+        <p className="text-sm text-content-secondary">Loja da academia — kimonos, faixas, suplementos e equipamentos</p>
       </div>
 
       <div className="flex gap-2 mb-6">
@@ -25,10 +29,10 @@ export function Produtos() {
           <button
             key={a}
             onClick={() => setAba(a)}
-            className={`text-xs font-mono uppercase px-3 py-1.5 rounded-sm border transition-colors ${
+            className={`text-xs font-mono uppercase px-3 py-1.5 rounded border transition-colors ${
               aba === a
                 ? 'bg-mat-900 text-white border-mat-900'
-                : 'bg-white text-mat-700/60 border-mat-700/15 hover:border-mat-700/30'
+                : 'bg-white text-content-secondary border-border hover:border-border-strong'
             }`}
           >
             {a === 'produtos' ? 'Produtos' : 'Fornecedores'}
@@ -53,6 +57,7 @@ function AbaProdutos() {
   const filtrados = produtos.filter(
     (p) => p.nome.toLowerCase().includes(busca.toLowerCase()) || p.categoria.toLowerCase().includes(busca.toLowerCase())
   )
+  const { itensPagina, setPaginaAtual, ...paginacao } = usePaginacao(filtrados, 12)
 
   const estoqueBaixoCount = produtos.filter((p) => p.ativo && p.estoqueAtual <= p.estoqueMinimo).length
 
@@ -63,11 +68,11 @@ function AbaProdutos() {
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar por nome ou categoria..."
-          className="w-full max-w-sm border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none bg-white"
+          className="w-full max-w-sm border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none bg-surface"
         />
         <button
           onClick={() => setMostrarForm(true)}
-          className="bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium px-4 py-2.5 rounded-sm transition-colors shrink-0 ml-4"
+          className="bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium px-4 py-2.5 rounded transition-colors shrink-0 ml-4"
         >
           + Novo produto
         </button>
@@ -79,41 +84,41 @@ function AbaProdutos() {
         </p>
       )}
 
-      <div className="bg-white rounded-sm border border-mat-700/10 overflow-hidden">
+      <div className="bg-surface rounded-md border border-border shadow-xs overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-mat-700/10 text-left">
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Produto</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Categoria</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Fornecedor</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Custo</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Venda</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Estoque</th>
+            <tr className="border-b border-border text-left">
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Produto</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Categoria</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Fornecedor</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Custo</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Venda</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Estoque</th>
               <th className="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody>
-            {filtrados.map((p) => {
+            {itensPagina.map((p) => {
               const estoqueBaixo = p.estoqueAtual <= p.estoqueMinimo
               return (
                 <tr
                   key={p.id}
                   onClick={() => setEditando(p)}
-                  className={`border-b border-mat-700/5 last:border-0 hover:bg-gi-50 cursor-pointer ${!p.ativo ? 'opacity-40' : ''}`}
+                  className={`border-b border-border-subtle last:border-0 hover:bg-bg-subtle cursor-pointer ${!p.ativo ? 'opacity-40' : ''}`}
                 >
-                  <td className="px-5 py-3.5 font-medium text-mat-900">{p.nome}</td>
-                  <td className="px-5 py-3.5 text-mat-700/70 text-xs">{p.categoria}</td>
-                  <td className="px-5 py-3.5 text-mat-700/70 text-xs">{p.fornecedorNome}</td>
-                  <td className="px-5 py-3.5 font-mono text-xs text-mat-700/70">
-                    R$ {p.precoCusto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <td className="px-5 py-3.5 font-medium text-content-primary">{p.nome}</td>
+                  <td className="px-5 py-3.5 text-content-secondary text-xs">{p.categoria}</td>
+                  <td className="px-5 py-3.5 text-content-secondary text-xs">{p.fornecedorNome}</td>
+                  <td className="px-5 py-3.5 font-mono text-xs text-content-secondary">
+                    {formatarCentavos(p.preco_custo_centavos)}
                   </td>
-                  <td className="px-5 py-3.5 font-mono text-mat-900">
-                    R$ {p.precoVenda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <td className="px-5 py-3.5 font-mono text-content-primary">
+                    {formatarCentavos(p.preco_venda_centavos)}
                   </td>
                   <td className="px-5 py-3.5">
                     <span
-                      className={`text-xs font-mono px-2 py-1 rounded-sm ${
-                        estoqueBaixo ? 'bg-brand-red/10 text-brand-red' : 'bg-mat-900/8 text-mat-700'
+                      className={`text-xs font-mono px-2 py-1 rounded ${
+                        estoqueBaixo ? 'bg-brand-red/10 text-brand-red' : 'bg-bg-subtle text-content-secondary'
                       }`}
                     >
                       {p.estoqueAtual} un.
@@ -122,7 +127,7 @@ function AbaProdutos() {
                   <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => alternarProdutoAtivo(p.id)}
-                      className="text-xs font-medium text-mat-700 hover:text-brand-red"
+                      className="text-xs font-medium text-content-secondary hover:text-brand-red"
                     >
                       {p.ativo ? 'Desativar' : 'Reativar'}
                     </button>
@@ -132,13 +137,14 @@ function AbaProdutos() {
             })}
             {filtrados.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-mat-700/40 text-sm">
-                  Nenhum produto encontrado.
+                <td colSpan={7} className="p-0">
+                  <EmptyState icon={PackageX} title="Nenhum produto encontrado" description="Ajuste a busca ou cadastre um novo produto." />
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        <Pagination {...paginacao} onMudarPagina={setPaginaAtual} />
       </div>
 
       {mostrarForm && (
@@ -146,8 +152,9 @@ function AbaProdutos() {
           fornecedores={fornecedores}
           onClose={() => setMostrarForm(false)}
           onSalvar={(dados) => {
-            adicionarProduto(dados)
-            setMostrarForm(false)
+            const resultado = adicionarProduto(dados)
+            if (resultado.ok) setMostrarForm(false)
+            return resultado
           }}
         />
       )}
@@ -158,8 +165,9 @@ function AbaProdutos() {
           fornecedores={fornecedores}
           onClose={() => setEditando(null)}
           onSalvar={(dados) => {
-            atualizarProduto(editando.id, dados)
-            setEditando(null)
+            const resultado = atualizarProduto(editando.id, dados)
+            if (resultado.ok) setEditando(null)
+            return resultado
           }}
         />
       )}
@@ -177,8 +185,8 @@ function ProdutoModal({
     nome: string
     categoria: string
     fornecedorId: string | null
-    precoCusto: number
-    precoVenda: number
+    preco_custo_centavos: number
+    preco_venda_centavos: number
     estoqueAtual: number
     estoqueMinimo: number
   }
@@ -188,58 +196,61 @@ function ProdutoModal({
     nome: string
     categoria: string
     fornecedorId: string | null
-    precoCusto: number
-    precoVenda: number
+    preco_custo_centavos: number
+    preco_venda_centavos: number
     estoqueAtual: number
     estoqueMinimo: number
-  }) => void
+  }) => { ok: boolean; erro?: string }
 }) {
   const [nome, setNome] = useState(produtoInicial?.nome ?? '')
   const [categoria, setCategoria] = useState(produtoInicial?.categoria ?? '')
   const [fornecedorId, setFornecedorId] = useState(produtoInicial?.fornecedorId ?? '')
-  const [precoCusto, setPrecoCusto] = useState(produtoInicial?.precoCusto ?? 0)
-  const [precoVenda, setPrecoVenda] = useState(produtoInicial?.precoVenda ?? 0)
+  // Os campos ficam em reais na tela (mais natural pra digitar); só convertem pra
+  // centavos na hora de montar os dados enviados ao store — igual aos formulários do financeiro.
+  const [precoCusto, setPrecoCusto] = useState((produtoInicial?.preco_custo_centavos ?? 0) / 100)
+  const [precoVenda, setPrecoVenda] = useState((produtoInicial?.preco_venda_centavos ?? 0) / 100)
   const [estoqueAtual, setEstoqueAtual] = useState(produtoInicial?.estoqueAtual ?? 0)
   const [estoqueMinimo, setEstoqueMinimo] = useState(produtoInicial?.estoqueMinimo ?? 0)
+  const [erro, setErro] = useState<string | null>(null)
 
   function salvar() {
-    if (!nome.trim()) return
-    onSalvar({
+    const resultado = onSalvar({
       nome,
       categoria,
       fornecedorId: fornecedorId || null,
-      precoCusto,
-      precoVenda,
+      preco_custo_centavos: paraCentavos(precoCusto),
+      preco_venda_centavos: paraCentavos(precoVenda),
       estoqueAtual,
       estoqueMinimo,
     })
+    if (!resultado.ok) setErro(resultado.erro ?? 'Não foi possível salvar o produto.')
   }
 
   return (
     <div className="fixed inset-0 bg-mat-900/60 flex items-center justify-center px-4 z-50 py-8">
-      <div className="bg-white rounded-sm p-6 w-full max-w-md max-h-full overflow-y-auto">
-        <h2 className="font-display text-lg text-mat-900 mb-5">{produtoInicial ? 'Editar produto' : 'Novo produto'}</h2>
+      <div className="bg-surface rounded p-6 w-full max-w-md max-h-full overflow-y-auto">
+        <h2 className="font-display text-lg text-content-primary mb-5">{produtoInicial ? 'Editar produto' : 'Novo produto'}</h2>
 
-        <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Nome</label>
+        <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">Nome</label>
         <input
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-4 text-sm focus:border-brand-red outline-none"
+          className="w-full border border-border rounded px-3 py-2 mb-4 text-sm focus:border-mat-900 outline-none"
         />
 
-        <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Categoria</label>
+        <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">Categoria</label>
         <input
           value={categoria}
           onChange={(e) => setCategoria(e.target.value)}
           placeholder="Kimonos, Faixas, Suplementos..."
-          className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-4 text-sm focus:border-brand-red outline-none"
+          className="w-full border border-border rounded px-3 py-2 mb-4 text-sm focus:border-mat-900 outline-none"
         />
 
-        <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Fornecedor</label>
+        <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">Fornecedor</label>
         <select
           value={fornecedorId}
           onChange={(e) => setFornecedorId(e.target.value)}
-          className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-4 text-sm focus:border-brand-red outline-none bg-white"
+          className="w-full border border-border rounded px-3 py-2 mb-4 text-sm focus:border-mat-900 outline-none bg-surface"
         >
           <option value="">Sem fornecedor definido</option>
           {fornecedores.map((f) => (
@@ -251,7 +262,7 @@ function ProdutoModal({
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">
+            <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">
               Preço de custo (R$)
             </label>
             <input
@@ -260,11 +271,11 @@ function ProdutoModal({
               step="0.01"
               value={precoCusto}
               onChange={(e) => setPrecoCusto(Number(e.target.value))}
-              className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none"
+              className="w-full border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none"
             />
           </div>
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">
+            <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">
               Preço de venda (R$)
             </label>
             <input
@@ -273,14 +284,14 @@ function ProdutoModal({
               step="0.01"
               value={precoVenda}
               onChange={(e) => setPrecoVenda(Number(e.target.value))}
-              className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none"
+              className="w-full border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">
+            <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">
               Estoque atual
             </label>
             <input
@@ -288,11 +299,11 @@ function ProdutoModal({
               min={0}
               value={estoqueAtual}
               onChange={(e) => setEstoqueAtual(Number(e.target.value))}
-              className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none"
+              className="w-full border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none"
             />
           </div>
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">
+            <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">
               Estoque mínimo
             </label>
             <input
@@ -300,22 +311,24 @@ function ProdutoModal({
               min={0}
               value={estoqueMinimo}
               onChange={(e) => setEstoqueMinimo(Number(e.target.value))}
-              className="w-full border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none"
+              className="w-full border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none"
             />
           </div>
         </div>
 
+        {erro && <p className="text-xs text-danger bg-danger-bg rounded px-3 py-2 mb-4">{erro}</p>}
+
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 border border-mat-700/20 text-mat-700 text-sm font-medium py-2.5 rounded-sm hover:bg-gi-50 transition-colors"
+            className="flex-1 border border-border text-content-secondary text-sm font-medium py-2.5 rounded hover:bg-bg-subtle transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={salvar}
             disabled={!nome.trim()}
-            className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded-sm transition-colors disabled:opacity-50"
+            className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded transition-colors disabled:opacity-50"
           >
             Salvar
           </button>
@@ -336,6 +349,7 @@ function AbaFornecedores() {
   const filtrados = fornecedores.filter(
     (f) => f.nome.toLowerCase().includes(busca.toLowerCase()) || f.categoria.toLowerCase().includes(busca.toLowerCase())
   )
+  const { itensPagina, setPaginaAtual, ...paginacao } = usePaginacao(filtrados, 12)
 
   return (
     <>
@@ -344,40 +358,40 @@ function AbaFornecedores() {
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar por nome ou categoria..."
-          className="w-full max-w-sm border border-mat-700/20 rounded-sm px-3 py-2 text-sm focus:border-brand-red outline-none bg-white"
+          className="w-full max-w-sm border border-border rounded px-3 py-2 text-sm focus:border-mat-900 outline-none bg-surface"
         />
         <button
           onClick={() => setMostrarForm(true)}
-          className="bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium px-4 py-2.5 rounded-sm transition-colors shrink-0 ml-4"
+          className="bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium px-4 py-2.5 rounded transition-colors shrink-0 ml-4"
         >
           + Novo fornecedor
         </button>
       </div>
 
-      <div className="bg-white rounded-sm border border-mat-700/10 overflow-hidden">
+      <div className="bg-surface rounded-md border border-border shadow-xs overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-mat-700/10 text-left">
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Fornecedor</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Categoria</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Contato</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Telefone</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">E-mail</th>
+            <tr className="border-b border-border text-left">
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Fornecedor</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Categoria</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Contato</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Telefone</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">E-mail</th>
               <th className="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody>
-            {filtrados.map((f) => (
-              <tr key={f.id} className={`border-b border-mat-700/5 last:border-0 hover:bg-gi-50 ${!f.ativo ? 'opacity-40' : ''}`}>
-                <td className="px-5 py-3.5 font-medium text-mat-900">{f.nome}</td>
-                <td className="px-5 py-3.5 text-mat-700/70 text-xs">{f.categoria}</td>
-                <td className="px-5 py-3.5 text-mat-700/70 text-xs">{f.contato}</td>
-                <td className="px-5 py-3.5 font-mono text-xs text-mat-700/70">{f.telefone}</td>
-                <td className="px-5 py-3.5 text-mat-700/70 text-xs">{f.email}</td>
+            {itensPagina.map((f) => (
+              <tr key={f.id} className={`border-b border-border-subtle last:border-0 hover:bg-bg-subtle ${!f.ativo ? 'opacity-40' : ''}`}>
+                <td className="px-5 py-3.5 font-medium text-content-primary">{f.nome}</td>
+                <td className="px-5 py-3.5 text-content-secondary text-xs">{f.categoria}</td>
+                <td className="px-5 py-3.5 text-content-secondary text-xs">{f.contato}</td>
+                <td className="px-5 py-3.5 font-mono text-xs text-content-secondary">{f.telefone}</td>
+                <td className="px-5 py-3.5 text-content-secondary text-xs">{f.email}</td>
                 <td className="px-5 py-3.5 text-right">
                   <button
                     onClick={() => alternarFornecedorAtivo(f.id)}
-                    className="text-xs font-medium text-mat-700 hover:text-brand-red"
+                    className="text-xs font-medium text-content-secondary hover:text-brand-red"
                   >
                     {f.ativo ? 'Desativar' : 'Reativar'}
                   </button>
@@ -386,13 +400,14 @@ function AbaFornecedores() {
             ))}
             {filtrados.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-mat-700/40 text-sm">
-                  Nenhum fornecedor encontrado.
+                <td colSpan={6} className="p-0">
+                  <EmptyState icon={Truck} title="Nenhum fornecedor encontrado" description="Ajuste a busca ou cadastre um novo fornecedor." />
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        <Pagination {...paginacao} onMudarPagina={setPaginaAtual} />
       </div>
 
       {mostrarForm && (
@@ -428,56 +443,56 @@ function FornecedorModal({
 
   return (
     <div className="fixed inset-0 bg-mat-900/60 flex items-center justify-center px-4 z-50">
-      <div className="bg-white rounded-sm p-6 w-full max-w-md">
-        <h2 className="font-display text-lg text-mat-900 mb-5">Novo fornecedor</h2>
+      <div className="bg-surface rounded p-6 w-full max-w-md">
+        <h2 className="font-display text-lg text-content-primary mb-5">Novo fornecedor</h2>
 
-        <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Nome</label>
+        <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">Nome</label>
         <input
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-4 text-sm focus:border-brand-red outline-none"
+          className="w-full border border-border rounded px-3 py-2 mb-4 text-sm focus:border-mat-900 outline-none"
         />
 
-        <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Categoria</label>
+        <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">Categoria</label>
         <input
           value={categoria}
           onChange={(e) => setCategoria(e.target.value)}
           placeholder="Kimonos, Suplementos, Equipamentos..."
-          className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-4 text-sm focus:border-brand-red outline-none"
+          className="w-full border border-border rounded px-3 py-2 mb-4 text-sm focus:border-mat-900 outline-none"
         />
 
-        <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Pessoa de contato</label>
+        <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">Pessoa de contato</label>
         <input
           value={contato}
           onChange={(e) => setContato(e.target.value)}
-          className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-4 text-sm focus:border-brand-red outline-none"
+          className="w-full border border-border rounded px-3 py-2 mb-4 text-sm focus:border-mat-900 outline-none"
         />
 
-        <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Telefone</label>
+        <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">Telefone</label>
         <input
           value={telefone}
           onChange={(e) => setTelefone(e.target.value)}
-          className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-4 text-sm focus:border-brand-red outline-none"
+          className="w-full border border-border rounded px-3 py-2 mb-4 text-sm focus:border-mat-900 outline-none"
         />
 
-        <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">E-mail</label>
+        <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">E-mail</label>
         <input
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-mat-700/20 rounded-sm px-3 py-2 mb-6 text-sm focus:border-brand-red outline-none"
+          className="w-full border border-border rounded px-3 py-2 mb-6 text-sm focus:border-mat-900 outline-none"
         />
 
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 border border-mat-700/20 text-mat-700 text-sm font-medium py-2.5 rounded-sm hover:bg-gi-50 transition-colors"
+            className="flex-1 border border-border text-content-secondary text-sm font-medium py-2.5 rounded hover:bg-bg-subtle transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={salvar}
             disabled={!nome.trim()}
-            className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded-sm transition-colors disabled:opacity-50"
+            className="flex-1 bg-brand-red hover:bg-brand-redDark text-white text-sm font-medium py-2.5 rounded transition-colors disabled:opacity-50"
           >
             Salvar
           </button>

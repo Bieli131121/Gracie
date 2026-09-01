@@ -97,11 +97,11 @@ export function FluxoCaixaPage() {
     <div>
       <div className="flex flex-wrap gap-4 mb-6 items-end">
         <div>
-          <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Conta</label>
+          <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">Conta</label>
           <select
             value={contaId}
             onChange={(e) => setContaId(e.target.value)}
-            className="border border-mat-700/20 rounded-sm px-3 py-2 text-sm bg-white"
+            className="border border-border rounded px-3 py-2 text-sm bg-surface"
           >
             <option value="todas">Todas as contas</option>
             {contasFinanceiras.map((c) => (
@@ -112,53 +112,53 @@ export function FluxoCaixaPage() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">De</label>
-          <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="border border-mat-700/20 rounded-sm px-3 py-2 text-sm bg-white" />
+          <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">De</label>
+          <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="border border-border rounded px-3 py-2 text-sm bg-surface" />
         </div>
         <div>
-          <label className="block text-xs font-mono uppercase tracking-wide text-mat-700/60 mb-1.5">Até</label>
-          <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="border border-mat-700/20 rounded-sm px-3 py-2 text-sm bg-white" />
+          <label className="block text-xs font-mono uppercase tracking-wide text-content-secondary mb-1.5">Até</label>
+          <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="border border-border rounded px-3 py-2 text-sm bg-surface" />
         </div>
       </div>
 
-      <h2 className="font-display text-lg text-mat-900 mb-3">Realizado</h2>
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="bg-white rounded-sm border border-mat-700/10 p-4">
-          <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">Saldo no início do período</div>
-          <div className="font-display text-lg text-mat-900">{formatarCentavos(realizado.saldoInicial)}</div>
+      <h2 className="font-display text-lg text-content-primary mb-3">Realizado</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        <div className="bg-surface rounded-md border border-border shadow-xs p-4">
+          <div className="text-xs font-mono uppercase tracking-wide text-content-muted mb-1">Saldo no início do período</div>
+          <div className="font-display text-lg text-content-primary">{formatarCentavos(realizado.saldoInicial)}</div>
         </div>
-        <div className="bg-white rounded-sm border border-mat-700/10 p-4">
-          <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">Saldo no fim do período</div>
-          <div className="font-display text-lg text-mat-900">{formatarCentavos(realizado.saldoFinal)}</div>
+        <div className="bg-surface rounded-md border border-border shadow-xs p-4">
+          <div className="text-xs font-mono uppercase tracking-wide text-content-muted mb-1">Saldo no fim do período</div>
+          <div className="font-display text-lg text-content-primary">{formatarCentavos(realizado.saldoFinal)}</div>
         </div>
-        <div className="bg-white rounded-sm border border-mat-700/10 p-4">
-          <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">Saldo atual (hoje)</div>
-          <div className="font-display text-lg text-mat-900">{formatarCentavos(saldoAtual)}</div>
+        <div className="bg-surface rounded-md border border-border shadow-xs p-4">
+          <div className="text-xs font-mono uppercase tracking-wide text-content-muted mb-1">Saldo atual (hoje)</div>
+          <div className="font-display text-lg text-content-primary">{formatarCentavos(saldoAtual)}</div>
         </div>
       </div>
 
-      <div className="bg-white rounded-sm border border-mat-700/10 overflow-hidden mb-8">
+      <div className="bg-surface rounded-md border border-border shadow-xs overflow-hidden mb-8">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-mat-700/10 text-left">
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Data</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Entradas</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Saídas</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Saldo do dia</th>
+            <tr className="border-b border-border text-left">
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Data</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Entradas</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Saídas</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Saldo do dia</th>
             </tr>
           </thead>
           <tbody>
             {realizado.linhas.map((l) => (
-              <tr key={l.data} className="border-b border-mat-700/5 last:border-0">
-                <td className="px-5 py-3 font-mono text-xs text-mat-700/70">{fmtData(l.data)}</td>
-                <td className="px-5 py-3 font-mono text-emerald-700">{l.entrada > 0 ? formatarCentavos(l.entrada) : '—'}</td>
+              <tr key={l.data} className="border-b border-border-subtle last:border-0">
+                <td className="px-5 py-3 font-mono text-xs text-content-secondary">{fmtData(l.data)}</td>
+                <td className="px-5 py-3 font-mono text-success">{l.entrada > 0 ? formatarCentavos(l.entrada) : '—'}</td>
                 <td className="px-5 py-3 font-mono text-brand-red">{l.saida > 0 ? formatarCentavos(l.saida) : '—'}</td>
-                <td className="px-5 py-3 font-mono font-medium text-mat-900">{formatarCentavos(l.saldo)}</td>
+                <td className="px-5 py-3 font-mono font-medium text-content-primary">{formatarCentavos(l.saldo)}</td>
               </tr>
             ))}
             {realizado.linhas.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-mat-700/40 text-sm">
+                <td colSpan={4} className="px-5 py-10 text-center text-content-muted text-sm">
                   Nenhuma movimentação no período.
                 </td>
               </tr>
@@ -167,52 +167,52 @@ export function FluxoCaixaPage() {
         </table>
       </div>
 
-      <h2 className="font-display text-lg text-mat-900 mb-3">Previsto (próximos 60 dias)</h2>
-      <div className="grid grid-cols-4 gap-4 mb-4">
-        <div className="bg-white rounded-sm border border-mat-700/10 p-4">
-          <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">Entradas previstas</div>
-          <div className="font-display text-lg text-emerald-700">{formatarCentavos(previsto.entradasPrevistas)}</div>
+      <h2 className="font-display text-lg text-content-primary mb-3">Previsto (próximos 60 dias)</h2>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div className="bg-surface rounded-md border border-border shadow-xs p-4">
+          <div className="text-xs font-mono uppercase tracking-wide text-content-muted mb-1">Entradas previstas</div>
+          <div className="font-display text-lg text-success">{formatarCentavos(previsto.entradasPrevistas)}</div>
         </div>
-        <div className="bg-white rounded-sm border border-mat-700/10 p-4">
-          <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">Saídas previstas</div>
+        <div className="bg-surface rounded-md border border-border shadow-xs p-4">
+          <div className="text-xs font-mono uppercase tracking-wide text-content-muted mb-1">Saídas previstas</div>
           <div className="font-display text-lg text-brand-red">{formatarCentavos(previsto.saidasPrevistas)}</div>
         </div>
-        <div className="bg-white rounded-sm border border-mat-700/10 p-4">
-          <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">Saldo projetado</div>
-          <div className="font-display text-lg text-mat-900">{formatarCentavos(saldoProjetado)}</div>
+        <div className="bg-surface rounded-md border border-border shadow-xs p-4">
+          <div className="text-xs font-mono uppercase tracking-wide text-content-muted mb-1">Saldo projetado</div>
+          <div className="font-display text-lg text-content-primary">{formatarCentavos(saldoProjetado)}</div>
         </div>
-        <div className="bg-white rounded-sm border border-mat-700/10 p-4">
-          <div className="text-xs font-mono uppercase tracking-wide text-mat-700/50 mb-1">Contas vencidas</div>
+        <div className="bg-surface rounded-md border border-border shadow-xs p-4">
+          <div className="text-xs font-mono uppercase tracking-wide text-content-muted mb-1">Contas vencidas</div>
           <div className="font-display text-lg text-brand-red">{previsto.vencidas.length}</div>
         </div>
       </div>
 
-      <div className="bg-white rounded-sm border border-mat-700/10 overflow-hidden">
+      <div className="bg-surface rounded-md border border-border shadow-xs overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-mat-700/10 text-left">
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Vencimento</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Descrição</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Tipo</th>
-              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-mat-700/50 font-medium">Valor</th>
+            <tr className="border-b border-border text-left">
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Vencimento</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Descrição</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Tipo</th>
+              <th className="px-5 py-3 font-mono text-xs uppercase tracking-wide text-content-muted font-medium">Valor</th>
             </tr>
           </thead>
           <tbody>
             {[...previsto.vencidas, ...previsto.aVencer].map((l) => (
-              <tr key={l.id} className="border-b border-mat-700/5 last:border-0">
-                <td className={`px-5 py-3 font-mono text-xs ${l.statusEfetivo === 'vencido' ? 'text-brand-red' : 'text-mat-700/70'}`}>
+              <tr key={l.id} className="border-b border-border-subtle last:border-0">
+                <td className={`px-5 py-3 font-mono text-xs ${l.statusEfetivo === 'vencido' ? 'text-brand-red' : 'text-content-secondary'}`}>
                   {fmtData(l.data_vencimento)}
                 </td>
-                <td className="px-5 py-3 text-mat-900">{l.descricao}</td>
-                <td className="px-5 py-3 text-xs text-mat-700/60">{l.tipo === 'receita' ? 'A receber' : 'A pagar'}</td>
-                <td className={`px-5 py-3 font-mono ${l.tipo === 'receita' ? 'text-emerald-700' : 'text-brand-red'}`}>
+                <td className="px-5 py-3 text-content-primary">{l.descricao}</td>
+                <td className="px-5 py-3 text-xs text-content-secondary">{l.tipo === 'receita' ? 'A receber' : 'A pagar'}</td>
+                <td className={`px-5 py-3 font-mono ${l.tipo === 'receita' ? 'text-success' : 'text-brand-red'}`}>
                   {formatarCentavos(l.restanteCentavos)}
                 </td>
               </tr>
             ))}
             {previsto.vencidas.length + previsto.aVencer.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-mat-700/40 text-sm">
+                <td colSpan={4} className="px-5 py-10 text-center text-content-muted text-sm">
                   Nada previsto para os próximos 60 dias.
                 </td>
               </tr>
